@@ -21,42 +21,50 @@ def index():
         <title>Buscar tu Postal</title>
         <style>
             body {
+                margin: 0;
+                padding: 0;
+                background-image: url('https://images.unsplash.com/photo-1596398783965-fb78bbf4a458?auto=format&fit=crop&w=1600&q=80'); /* Imagen de Oporto */
+                background-size: cover;
+                background-position: center;
                 font-family: Arial, sans-serif;
-                background-color: #f9f9f9;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
             }
-            .container {
-                background: white;
-                padding: 30px;
-                border-radius: 10px;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                text-align: center;
+            .search-box {
+                position: absolute;
+                top: 30px;
+                right: 40px;
+                background: rgba(255, 255, 255, 0.9);
+                padding: 20px 25px;
+                border-radius: 12px;
+                box-shadow: 0 0 15px rgba(0,0,0,0.2);
+                text-align: right;
             }
-            input[type="text"] {
+            .search-box h2 {
+                margin: 0 0 15px 0;
+                font-size: 20px;
+                color: #333;
+            }
+            .search-box input[type="text"] {
                 padding: 10px;
                 width: 250px;
                 border: 1px solid #ccc;
                 border-radius: 5px 0 0 5px;
                 outline: none;
             }
-            button {
-                padding: 10px 20px;
+            .search-box button {
+                padding: 10px 18px;
                 background-color: #28a745;
                 color: white;
                 border: none;
                 border-radius: 0 5px 5px 0;
                 cursor: pointer;
             }
-            button:hover {
+            .search-box button:hover {
                 background-color: #218838;
             }
         </style>
     </head>
     <body>
-        <div class="container">
+        <div class="search-box">
             <h2>🔍 Buscar tu Postal</h2>
             <form action="/buscar" method="get">
                 <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" required>
