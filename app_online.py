@@ -1,149 +1,62 @@
-from flask import Flask, request, redirect, send_from_directory, render_template_string
+from flask import Flask, request, render_template, send_from_directory, redirect
 import os
-import hashlib
+import uuid
+from PIL import Image
+import shutil
 
 app = Flask(__name__)
 
-# Rutas base
-BASE = os.path.dirname(os.path.abspath(__file__))
-CARPETA_GALERIAS = os.path.join(BASE, "galerias")
-CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
-ARCHIVO_CODIGOS = os.path.join(BASE, "codigos_postales.txt")
+CARPETA_GALERIAS = "galerias"
+CARPETA_DESCARGAS = "descargadas"
+os.makedirs(CARPETA_GALERIAS, exist_ok=True)
+os.makedirs(CARPETA_DESCARGAS, exist_ok=True)
 
-# HTML con fondo y buscador centrado
-HTML_FORM = """
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Buscar tu Postal</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-image: url("/static/staticfondo_oporto.jpg");
-            background-size: cover;
-            background-position: center;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .search-container {
-            background-color: rgba(255, 255, 255, 0.95);
-            padding: 30px 40px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            text-align: center;
-            max-width: 400px;
-        }
-
-        .search-container h1 {
-            margin-bottom: 20px;
-            font-size: 22px;
-            color: #333;
-        }
-
-        .search-container input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            margin-bottom: 15px;
-        }
-
-        .search-container button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .search-container button:hover {
-            background-color: #218838;
-        }
-
-        .icon {
-            font-size: 18px;
-            margin-right: 8px;
-        }
-    </style>
-</head>
-<body>
-    <div class="search-container">
-        <h1><span class="icon">🔍</span>Buscar tu Postal</h1>
-        <form method="GET" action="/ver_imagen">
-            <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" required>
-            <button type="submit">Buscar</button>
-        </form>
-    </div>
-</body>
-</html>
-
-# Ruta principal
 @app.route('/')
-def inicio():
-    return render_template_string(HTML_FORM)
+def index():
+    return render_template('index.html')
 
-# Ver PDF directamente
-@app.route('/galeria/<cliente>/<archivo>')
-def archivo(cliente, archivo):
-    return send_from_directory(os.path.join(CARPETA_GALERIAS, cliente), archivo)
-
-# Ver imagen como postal sin código encima
 @app.route('/ver_imagen/<codigo>')
 def ver_imagen(codigo):
-    nombre = f"imagen_{codigo}.jpg"
-    ruta = os.path.join(CARPETA_CLIENTE, nombre)
-    if os.path.exists(ruta):
-        return render_template_string(f"""
-        <!DOCTYPE html>
-        <html><head><title>Postal {codigo}</title>
-        <style>
-            body {{
-                background: white;
-                text-align: center;
-                font-family: sans-serif;
-            }}
-            img {{
-                margin-top: 60px;
-                max-width: 85vw;
-                height: auto;
-                box-shadow: 0 0 12px rgba(0,0,0,0.3);
-            }}
-            a {{
-                display: inline-block;
-                margin-top: 30px;
-                padding: 10px 20px;
-                background: #007bff;
-                color: white;
-                text-decoration: none;
-                border-radius: 6px;
-            }}
-        </style></head><body>
-        <img src="/galeria/cliente123/{nombre}" alt="postal">
-        <br><a href="/">⬅ Volver</a>
-        </body></html>
-        """)
-    return "❌ Imagen no encontrada"
+    carpeta = os.path.join(CARPETA_GALERIAS, "cliente123")
+    nombre_archivo = f"imagen_{codigo}.jpg"
+    ruta_imagen = os.path.join(carpeta, nombre_archivo)
+    if os.path.exists(ruta_imagen):
+        return render_template("ver_imagen.html", codigo=codigo)
+    else:
+        return "Código no encontrado", 404
 
-# Buscar por código
-@app.route('/buscar')
-def buscar():
-    codigo = request.args.get("codigo", "").replace("#", "").strip()
-    with open(ARCHIVO_CODIGOS, "r") as f:
-        for linea in f:
-            if linea.startswith(codigo):
-                _, nombre = linea.strip().split(",")
-                return redirect(f"/ver_imagen/{codigo}")
-    return "❌ Código no encontrado"
+@app.route('/galeria/cliente123/<filename>')
+def galeria_cliente123(filename):
+    carpeta = os.path.join(CARPETA_GALERIAS, "cliente123")
+    return send_from_directory(carpeta, filename)
 
-# Ejecutar en modo producción (si necesario)
+@app.route('/subir_postal', methods=['POST'])
+def subir_postal():
+    imagen = request.files['imagen']
+    codigo = request.form['codigo']
+    nombre_archivo = f"imagen_{codigo}.jpg"
+
+    ruta_cliente = os.path.join(CARPETA_GALERIAS, "cliente123")
+    ruta_destino = os.path.join(ruta_cliente, nombre_archivo)
+    os.makedirs(ruta_cliente, exist_ok=True)
+    imagen.save(ruta_destino)
+
+    # Convertir imagen a blanco y negro automático
+    im = Image.open(ruta_destino).convert('L')
+    im.save(ruta_destino)
+
+    # Copiar a carpeta descargadas y renombrar
+    nueva_ruta = os.path.join(CARPETA_DESCARGAS, f"imagen_{codigo}.jpg")
+    shutil.copy(ruta_destino, nueva_ruta)
+
+    return f"Imagen subida correctamente con código: {codigo}"
+
+@app.route('/nuevas_postales')
+def nuevas_postales():
+    ruta = os.path.join(CARPETA_GALERIAS, "cliente123")
+    archivos = os.listdir(ruta)
+    codigos = [a.replace("imagen_", "").replace(".jpg", "") for a in archivos if a.endswith(".jpg")]
+    return {"codigos": codigos}
+
 if __name__ == '__main__':
-    app.run(debug=False, port=5000)
+    app.run(debug=True)
