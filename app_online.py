@@ -1,163 +1,128 @@
+from flask import Flask, request, redirect, send_from_directory, render_template_string
 import os
-from flask import Flask, request, send_from_directory, jsonify, redirect
+import hashlib
 
 app = Flask(__name__)
 
-# Rutas de carpetas
+# Rutas base
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
-os.makedirs(CARPETA_CLIENTE, exist_ok=True)
+ARCHIVO_CODIGOS = os.path.join(BASE, "codigos_postales.txt")
 
-# Cola de códigos en memoria
-cola_postales = []
+# HTML con fondo y buscador centrado
+HTML_FORM = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Buscar tu Postal</title>
+    <style>
+        body {{
+            margin: 0;
+            height: 100vh;
+            background: url('/static/staticfondo_oporto.jpg') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+        }}
+        .buscador {{
+            background: rgba(255, 255, 255, 0.9);
+            padding: 25px 40px;
+            border-radius: 12px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.2);
+            text-align: center;
+        }}
+        input {{
+            padding: 10px;
+            width: 250px;
+            margin-right: 8px;
+            border: 1px solid #aaa;
+            border-radius: 5px;
+        }}
+        button {{
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }}
+        button:hover {{
+            background: #218838;
+        }}
+    </style>
+</head>
+<body>
+    <form class="buscador" action="/buscar" method="get">
+        <h2>🔍 Buscar tu Postal</h2>
+        <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" required>
+        <button type="submit">Buscar</button>
+    </form>
+</body>
+</html>
+"""
 
-# ✅ Página principal con buscador
+# Ruta principal
 @app.route('/')
-def index():
-    return """
-    <html>
-    <head>
-        <title>Buscar tu Postal</title>
-        <style>
-            body {
-                margin: 0;
-                padding: 0;
-                background-image: url('https://images.unsplash.com/photo-1596398783965-fb78bbf4a458?auto=format&fit=crop&w=1600&q=80'); /* Imagen de Oporto */
-                background-size: cover;
-                background-position: center;
-                font-family: Arial, sans-serif;
-            }
-            .search-box {
-                position: absolute;
-                top: 30px;
-                right: 40px;
-                background: rgba(255, 255, 255, 0.9);
-                padding: 20px 25px;
-                border-radius: 12px;
-                box-shadow: 0 0 15px rgba(0,0,0,0.2);
-                text-align: right;
-            }
-            .search-box h2 {
-                margin: 0 0 15px 0;
-                font-size: 20px;
-                color: #333;
-            }
-            .search-box input[type="text"] {
-                padding: 10px;
-                width: 250px;
-                border: 1px solid #ccc;
-                border-radius: 5px 0 0 5px;
-                outline: none;
-            }
-            .search-box button {
-                padding: 10px 18px;
-                background-color: #28a745;
-                color: white;
-                border: none;
-                border-radius: 0 5px 5px 0;
-                cursor: pointer;
-            }
-            .search-box button:hover {
-                background-color: #218838;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="search-box">
-            <h2>🔍 Buscar tu Postal</h2>
-            <form action="/buscar" method="get">
-                <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" required>
-                <button type="submit">Buscar</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    """
+def inicio():
+    return render_template_string(HTML_FORM)
 
-# ✅ Buscar postal por código
-@app.route('/buscar')
-def buscar():
-    codigo = request.args.get("codigo", "").strip()
-    return redirect(f"/ver_imagen/{codigo}")
+# Ver PDF directamente
+@app.route('/galeria/<cliente>/<archivo>')
+def archivo(cliente, archivo):
+    return send_from_directory(os.path.join(CARPETA_GALERIAS, cliente), archivo)
 
-# ✅ Vista de imagen limpia por código
+# Ver imagen como postal sin código encima
 @app.route('/ver_imagen/<codigo>')
 def ver_imagen(codigo):
-    ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
-    html = f"""
-    <html>
-    <head>
-        <title>Postal {codigo}</title>
+    nombre = f"imagen_{codigo}.jpg"
+    ruta = os.path.join(CARPETA_CLIENTE, nombre)
+    if os.path.exists(ruta):
+        return render_template_string(f"""
+        <!DOCTYPE html>
+        <html><head><title>Postal {codigo}</title>
         <style>
-            html, body {{
-                margin: 0;
-                padding: 0;
+            body {{
                 background: white;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                font-family: Arial, sans-serif;
+                text-align: center;
+                font-family: sans-serif;
             }}
             img {{
-                max-width: 90vw;
-                max-height: 80vh;
-                object-fit: contain;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                margin-bottom: 20px;
+                margin-top: 60px;
+                max-width: 85vw;
+                height: auto;
+                box-shadow: 0 0 12px rgba(0,0,0,0.3);
             }}
-            .boton {{
-                background-color: #007bff;
-                color: white;
+            a {{
+                display: inline-block;
+                margin-top: 30px;
                 padding: 10px 20px;
+                background: #007bff;
+                color: white;
                 text-decoration: none;
-                border-radius: 5px;
+                border-radius: 6px;
             }}
-        </style>
-    </head>
-    <body>
-        <img src="{ruta_img}" alt="postal">
-        <a href="/" class="boton">⬅️ Volver</a>
-    </body>
-    </html>
-    """
-    return html
+        </style></head><body>
+        <img src="/galeria/cliente123/{nombre}" alt="postal">
+        <br><a href="/">⬅ Volver</a>
+        </body></html>
+        """)
+    return "❌ Imagen no encontrada"
 
-# ✅ Ruta para que laptops consulten nuevas postales
-@app.route('/nuevas_postales')
-def nuevas_postales():
-    if cola_postales:
-        codigo = cola_postales.pop(0)
-        return jsonify({"codigo": codigo})
-    return jsonify({"codigo": None})
+# Buscar por código
+@app.route('/buscar')
+def buscar():
+    codigo = request.args.get("codigo", "").replace("#", "").strip()
+    with open(ARCHIVO_CODIGOS, "r") as f:
+        for linea in f:
+            if linea.startswith(codigo):
+                _, nombre = linea.strip().split(",")
+                return redirect(f"/ver_imagen/{codigo}")
+    return "❌ Código no encontrado"
 
-# ✅ Subir una nueva postal desde la laptop
-@app.route('/subir_postal', methods=['POST'])
-def subir_postal():
-    codigo = request.form.get('codigo')
-    imagen = request.files.get('imagen')
-
-    if not codigo or not imagen:
-        return "❌ Código o imagen faltante", 400
-
-    nombre_archivo = f"imagen_{codigo}.jpg"
-    ruta_destino = os.path.join(CARPETA_CLIENTE, nombre_archivo)
-    imagen.save(ruta_destino)
-
-    if codigo not in cola_postales:
-        cola_postales.append(codigo)
-
-    return "✅ Imagen subida correctamente", 200
-
-# ✅ Servir archivos desde galería
-@app.route('/galeria/cliente123/<archivo>')
-def servir_postal(archivo):
-    return send_from_directory(CARPETA_CLIENTE, archivo)
-
-# ✅ Puerto dinámico para Render
+# Ejecutar en modo producción (si necesario)
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=False, port=5000)
