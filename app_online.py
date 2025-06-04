@@ -18,52 +18,73 @@ HTML_FORM = """
     <meta charset="UTF-8">
     <title>Buscar tu Postal</title>
     <style>
-        body {{
+        body {
             margin: 0;
-            height: 100vh;
-            background: url('/static/staticfondo_oporto.jpg') no-repeat center center fixed;
+            font-family: Arial, sans-serif;
+            background-image: url("/static/staticfondo_oporto.jpg");
             background-size: cover;
+            background-position: center;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: sans-serif;
-        }}
-        .buscador {{
-            background: rgba(255, 255, 255, 0.9);
-            padding: 25px 40px;
-            border-radius: 12px;
-            box-shadow: 0 0 12px rgba(0,0,0,0.2);
+        }
+
+        .search-container {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
             text-align: center;
-        }}
-        input {{
-            padding: 10px;
-            width: 250px;
-            margin-right: 8px;
-            border: 1px solid #aaa;
-            border-radius: 5px;
-        }}
-        button {{
+            max-width: 400px;
+        }
+
+        .search-container h1 {
+            margin-bottom: 20px;
+            font-size: 22px;
+            color: #333;
+        }
+
+        .search-container input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .search-container button {
             padding: 10px 20px;
-            background: #28a745;
+            font-size: 16px;
+            background-color: #28a745;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
-        }}
-        button:hover {{
-            background: #218838;
-        }}
+            transition: background-color 0.3s ease;
+        }
+
+        .search-container button:hover {
+            background-color: #218838;
+        }
+
+        .icon {
+            font-size: 18px;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
-    <form class="buscador" action="/buscar" method="get">
-        <h2>🔍 Buscar tu Postal</h2>
-        <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" required>
-        <button type="submit">Buscar</button>
-    </form>
+    <div class="search-container">
+        <h1><span class="icon">🔍</span>Buscar tu Postal</h1>
+        <form method="GET" action="/ver_imagen">
+            <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" required>
+            <button type="submit">Buscar</button>
+        </form>
+    </div>
 </body>
 </html>
-"""
 
 # Ruta principal
 @app.route('/')
