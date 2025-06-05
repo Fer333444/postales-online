@@ -159,4 +159,8 @@ def ver_imagen(codigo):
 @app.route('/descargadas/<path:filename>')
 def imagenes(filename):
     return send_from_directory(CARPETA_DESCARGADAS, filename)
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
