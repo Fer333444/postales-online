@@ -4,16 +4,13 @@ from PIL import Image
 
 app = Flask(__name__)
 
-# Rutas de carpetas
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
 os.makedirs(CARPETA_CLIENTE, exist_ok=True)
 
-# Cola en memoria
 cola_postales = []
 
-# Página principal: buscador con fondo de Oporto
 @app.route('/')
 def index():
     return render_template_string("""
@@ -120,7 +117,12 @@ def buscar():
 
 @app.route('/ver_imagen/<codigo>')
 def ver_imagen(codigo):
-    ruta_img = f"/galeria/cliente123/postal_{codigo}.jpg"
+    ruta_postal = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+    if os.path.exists(ruta_postal):
+        ruta_img = f"/galeria/cliente123/postal_{codigo}.jpg"
+    else:
+        ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
+
     html = f"""
     <html>
     <head>
@@ -163,18 +165,23 @@ def ver_imagen(codigo):
 
 def insertar_foto_en_postal(codigo):
     try:
-        origen = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-        destino = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-        marco = os.path.join(BASE, "static", "plantilla_postal.jpg")
+        carpeta = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+        salida = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+        marco_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
 
-        base = Image.open(marco).convert("RGB")
-        foto = Image.open(origen).convert("RGB")
-        foto = foto.resize((430, 330))
-        base.paste(foto, (90, 95))
-        base.save(destino)
+        base = Image.open(marco_path).convert("RGB")
+        foto = Image.open(carpeta).convert("RGB")
+
+        tamaño_foto = (610, 420)
+        posicion = (130, 300)
+
+        foto = foto.resize(tamaño_foto)
+        base.paste(foto, posicion)
+
+        base.save(salida)
         return True
     except Exception as e:
-        print(f"❌ Error creando postal {codigo}: {e}")
+        print(f"Error generando postal para {codigo}: {e}")
         return False
 
 @app.route('/nuevas_postales')
