@@ -1,5 +1,6 @@
 import os
 from flask import Flask, request, send_from_directory, jsonify, redirect, render_template_string
+from PIL import Image
 
 app = Flask(__name__)
 
@@ -160,6 +161,26 @@ def ver_imagen(codigo):
     </html>
     """
     return html
+def insertar_foto_en_postal(codigo):
+    carpeta = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+    salida = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+    marco_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
+
+    try:
+        base = Image.open(marco_path).convert("RGB")
+        foto = Image.open(carpeta).convert("RGB")
+
+        tamaño_foto = (430, 330)
+        foto = foto.resize(tamaño_foto)
+
+        posicion = (90, 95)
+        base.paste(foto, posicion)
+
+        base.save(salida)
+        return True
+    except Exception as e:
+        print(f"Error generando postal para {codigo}: {e}")
+        return False
 
 # API: laptop consulta si hay nuevas postales
 @app.route('/nuevas_postales')
