@@ -112,16 +112,15 @@ def index():
     </body>
     </html>
     """)
-# Buscar postal redirecciona a /ver_imagen/<codigo>
+
 @app.route('/buscar')
 def buscar():
     codigo = request.args.get("codigo", "").strip()
     return redirect(f"/ver_imagen/{codigo}")
 
-# Vista de postal por código
 @app.route('/ver_imagen/<codigo>')
 def ver_imagen(codigo):
-    ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
+    ruta_img = f"/galeria/cliente123/postal_{codigo}.jpg"
     html = f"""
     <html>
     <head>
@@ -161,28 +160,23 @@ def ver_imagen(codigo):
     </html>
     """
     return html
+
 def insertar_foto_en_postal(codigo):
-    carpeta = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    salida = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-    marco_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
-
     try:
-        base = Image.open(marco_path).convert("RGB")
-        foto = Image.open(carpeta).convert("RGB")
+        origen = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+        destino = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+        marco = os.path.join(BASE, "static", "plantilla_postal.jpg")
 
-        tamaño_foto = (430, 330)
-        foto = foto.resize(tamaño_foto)
-
-        posicion = (90, 95)
-        base.paste(foto, posicion)
-
-        base.save(salida)
+        base = Image.open(marco).convert("RGB")
+        foto = Image.open(origen).convert("RGB")
+        foto = foto.resize((430, 330))
+        base.paste(foto, (90, 95))
+        base.save(destino)
         return True
     except Exception as e:
-        print(f"Error generando postal para {codigo}: {e}")
+        print(f"❌ Error creando postal {codigo}: {e}")
         return False
 
-# API: laptop consulta si hay nuevas postales
 @app.route('/nuevas_postales')
 def nuevas_postales():
     if cola_postales:
@@ -190,7 +184,6 @@ def nuevas_postales():
         return jsonify({"codigo": codigo})
     return jsonify({"codigo": None})
 
-# API: laptop sube nueva postal
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
     codigo = request.form.get('codigo')
@@ -203,17 +196,17 @@ def subir_postal():
     ruta_destino = os.path.join(CARPETA_CLIENTE, nombre_archivo)
     imagen.save(ruta_destino)
 
+    insertar_foto_en_postal(codigo)
+
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
     return "✅ Imagen subida correctamente", 200
 
-# Servir imágenes de cliente
 @app.route('/galeria/cliente123/<archivo>')
 def servir_postal(archivo):
     return send_from_directory(CARPETA_CLIENTE, archivo)
 
-# Render: puerto dinámico
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
