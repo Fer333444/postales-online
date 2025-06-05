@@ -17,76 +17,86 @@ cola_postales = []
 def index():
     return render_template_string("""
     <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Buscar tu Postal</title>
-        <style>
-            body {
-                margin: 0;
-                padding: 0;
-                background: url('/static/nuevo_fondo_oporto.jpg') no-repeat center center fixed;
-                background-size: cover;
-                font-family: Arial, sans-serif;
-            }
-            .contenedor {
-                background-color: rgba(255, 255, 255, 0.95);
-                padding: 20px 30px;
-                border-radius: 10px;
-                box-shadow: 0 0 10px rgba(0,0,0,0.2);
-                max-width: 400px;
-                width: 90%;
-                margin: 30px auto 0 auto;
-                text-align: center;
-            }
-            h1 {
-                margin-bottom: 20px;
-                font-size: 22px;
-                color: #333;
-            }
-            input[type="text"] {
-                width: 100%;
-                padding: 10px;
-                margin-bottom: 15px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                font-size: 18px;
-            }
-            button {
-                padding: 10px 22px;
-                font-size: 16px;
-                background-color: #28a745;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-            }
-            button:hover {
-                background-color: #218838;
-            }
-            @media (max-width: 500px) {
-                h1 {
-                    font-size: 18px;
-                }
-                button, input[type="text"] {
-                    font-size: 16px;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="contenedor">
-            <h1>🔍 Buscar tu Postal</h1>
-            <form action="/buscar" method="get">
-                <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" required>
-                <button type="submit">Buscar</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    """)
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscar tu Postal</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: url('/static/nuevo_fondo_oporto.jpg') no-repeat center center;
+            background-size: cover;
+            background-attachment: scroll;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
 
+        .contenedor {
+            background-color: rgba(255, 255, 255, 0.92);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #333;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 18px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        @media (max-width: 500px) {
+            h1 {
+                font-size: 20px;
+            }
+
+            button, input[type="text"] {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="contenedor">
+        <h1>🔍 Buscar tu Postal</h1>
+        <form action="/buscar" method="get">
+            <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" pattern="[A-Za-z0-9]{5,}" required>
+            <button type="submit">Buscar</button>
+        </form>
+    </div>
+</body>
+</html>
 # Buscar postal redirecciona a /ver_imagen/<codigo>
 @app.route('/buscar')
 def buscar():
