@@ -204,7 +204,7 @@ def subir_postal():
     ruta_destino = os.path.join(CARPETA_CLIENTE, nombre_archivo)
     imagen.save(ruta_destino)
 
-    insertar_foto_en_postal(codigo)
+    insertar_foto_en_postal(codigo)  # ✅ Agrega esta línea para generar la postal
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
