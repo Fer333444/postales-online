@@ -188,7 +188,7 @@ def insertar_foto_en_postal(codigo):
 @app.route('/nuevas_postales')
 def nuevas_postales():
     if cola_postales:
-        codigo = cola_postales.pop(0)
+        codigo = cola_postales[0]  # No eliminamos de la cola
         return jsonify({"codigo": codigo})
     return jsonify({"codigo": None})
 
