@@ -26,9 +26,8 @@ def index():
             body {
                 margin: 0;
                 padding: 0;
-                background: url('/static/nuevo_fondo_oporto.jpg') no-repeat center center;
+                background: url('/static/nuevo_fondo_oporto.jpg') no-repeat center center fixed;
                 background-size: cover;
-                background-attachment: scroll;
                 font-family: Arial, sans-serif;
                 display: flex;
                 justify-content: center;
@@ -76,7 +75,21 @@ def index():
                 background-color: #218838;
             }
 
-            @media (max-width: 500px) {
+            @media (max-width: 768px) {
+                body {
+                    align-items: flex-start;
+                    padding-top: 40px;
+                }
+
+                .contenedor {
+                    margin-top: 0;
+                    border-radius: 0 0 15px 15px;
+                    max-width: 100%;
+                    width: 100%;
+                    box-shadow: none;
+                    background-color: rgba(255, 255, 255, 0.95);
+                }
+
                 h1 {
                     font-size: 20px;
                 }
