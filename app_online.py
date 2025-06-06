@@ -164,18 +164,27 @@ def ver_imagen(codigo):
     """
 
 def insertar_foto_en_postal(codigo):
-    foto_path = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    marco_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
-    salida_path = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-
     try:
-        base = Image.open(marco_path).convert("RGB")
-        foto = Image.open(foto_path).convert("RGB")
-        foto = foto.resize((430, 330))
-        base.paste(foto, (90, 95))
-        base.save(salida_path)
+        ruta_foto = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+        ruta_salida = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+        plantilla_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
+
+        base = Image.open(plantilla_path).convert("RGB")
+        foto = Image.open(ruta_foto).convert("RGB")
+
+        # Redimensionar la foto a tamaño más pequeño
+        tamaño_foto = (410, 270)  # ajustado a parte inferior
+        foto = foto.resize(tamaño_foto)
+
+        # Posición en la parte inferior de la postal
+        posicion = (100, 295)  # izquierda y alto desde arriba
+
+        base.paste(foto, posicion)
+        base.save(ruta_salida)
+        return True
     except Exception as e:
         print(f"⚠️ Error generando postal para {codigo}: {e}")
+        return False
 
 @app.route('/nuevas_postales')
 def nuevas_postales():
