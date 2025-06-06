@@ -4,14 +4,12 @@ from PIL import Image
 
 app = Flask(__name__)
 
-# Carpetas
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
 os.makedirs(CARPETA_CLIENTE, exist_ok=True)
 cola_postales = []
 
-# Página principal
 @app.route('/')
 def index():
     return render_template_string("""
@@ -22,7 +20,6 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>Postcard Search</title>
         <style>
-            * { box-sizing: border-box; }
             html, body {
                 margin: 0;
                 padding: 0;
@@ -59,21 +56,16 @@ def index():
                 margin: 20vh auto 0;
                 backdrop-filter: blur(8px);
             }
-            input[type="text"] {
-                width: 100%;
+            input[type="text"], button {
                 padding: 12px;
-                margin-bottom: 15px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
                 font-size: 18px;
+                border-radius: 6px;
+                border: none;
+                margin: 5px;
             }
             button {
-                padding: 12px 24px;
-                font-size: 18px;
                 background-color: #000;
                 color: white;
-                border: none;
-                border-radius: 6px;
                 cursor: pointer;
             }
         </style>
@@ -103,103 +95,104 @@ def buscar():
 def ver_imagen(codigo):
     ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
     ruta_postal = f"/galeria/cliente123/postal_{codigo}.jpg"
-    return f"""
+    return render_template_string("""
+    <!DOCTYPE html>
     <html>
     <head>
-        <title>Postcard {codigo}</title>
+        <title>Postcard {{codigo}}</title>
         <style>
-            body {{
+            body {
                 font-family: Arial;
-                background: #f0f0f0;
+                background: #f8f9fa;
                 margin: 0;
-                padding: 20px;
+                padding: 40px;
                 text-align: center;
-            }}
-            .grid {{
+            }
+            .grid {
                 display: flex;
                 justify-content: center;
-                flex-wrap: wrap;
                 gap: 30px;
-                margin-top: 20px;
-            }}
-            .card {{
+                flex-wrap: wrap;
+            }
+            .item {
                 background: white;
                 padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                width: 280px;
-            }}
-            .card img {{
-                width: 100%;
                 border-radius: 8px;
-            }}
-            .price {{
-                margin: 10px 0;
-                font-size: 18px;
-                font-weight: bold;
-            }}
-            .stripe {{
-                background-color: #6772e5;
-                color: white;
-                border: none;
-                padding: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                width: 250px;
+            }
+            img {
+                max-width: 100%;
                 border-radius: 6px;
+                margin-bottom: 10px;
+            }
+            .shop-grid {
+                margin-top: 40px;
+                display: flex;
+                flex-direction: column;
+                gap: 30px;
+            }
+            .category h3 {
+                text-align: left;
+                margin-left: 10px;
+            }
+            .items {
+                display: flex;
+                gap: 20px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .item select, .item button {
                 width: 100%;
-                margin-bottom: 8px;
-            }}
-            .paypal {{
-                background-color: #ffc439;
-                color: #111;
-                border: none;
-                padding: 10px;
-                border-radius: 6px;
-                width: 100%;
-            }}
-            .back {{
-                display: inline-block;
-                margin-top: 30px;
-                background: #007bff;
-                color: white;
-                padding: 10px 20px;
-                border-radius: 6px;
-                text-decoration: none;
-            }}
+                padding: 8px;
+                margin-top: 8px;
+            }
         </style>
     </head>
     <body>
         <h2>🖼️ Your Photo & Postcard</h2>
         <div class="grid">
-            <div class="card">
-                <img src="{ruta_img}" alt="Original">
-                <div class="price">€4.99</div>
-                <button class="stripe">Pay with Stripe</button>
-                <button class="paypal">Pay with PayPal</button>
+            <div class="item">
+                <img src="{{ ruta_img }}" alt="Original">
+                <p><strong>Original Photo</strong></p>
+                <button>Buy with Stripe</button>
+                <button>Buy with PayPal</button>
             </div>
-            <div class="card">
-                <img src="{ruta_postal}" alt="Postcard">
-                <div class="price">€3.50</div>
-                <button class="stripe">Pay with Stripe</button>
-                <button class="paypal">Pay with PayPal</button>
+            <div class="item">
+                <img src="{{ ruta_postal }}" alt="Postcard">
+                <p><strong>Postcard</strong></p>
+                <button>Buy with Stripe</button>
+                <button>Buy with PayPal</button>
             </div>
         </div>
-        <a href="/" class="back">⬅ Back</a>
+
+        <h2>🛍️ T-Shirt Shop</h2>
+        <div class="shop-grid">
+        {% for group in ['Men', 'Women', 'Boys', 'Girls'] %}
+            <div class="category">
+                <h3>{{ group }}</h3>
+                <div class="items">
+                    {% for color in ['White', 'Black'] %}
+                        <div class="item">
+                            <img src="/static/{{ color | lower }}_shirt.jpg" alt="{{ color }} Shirt">
+                            <p><strong>{{ color }} T-Shirt</strong></p>
+                            <label>Size:</label>
+                            <select>
+                                {% for size in ['XS', 'S', 'M', 'L', 'XL'] %}
+                                    <option>{{ size }}</option>
+                                {% endfor %}
+                            </select>
+                            <button>Buy Now</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+        <br><a href="/">⬅ Back</a>
     </body>
     </html>
-    """
-
-def insertar_foto_en_postal(codigo):
-    try:
-        path_foto = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-        path_postal = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-        marco_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
-        base = Image.open(marco_path).convert("RGB")
-        foto = Image.open(path_foto).convert("RGB").resize((430, 330))
-        base.paste(foto, (90, 95))
-        base.save(path_postal)
-        return True
-    except Exception as e:
-        print(f"Error generando postal: {e}")
-        return False
+    """, codigo=codigo, ruta_img=ruta_img, ruta_postal=ruta_postal)
 
 @app.route('/nuevas_postales')
 def nuevas_postales():
@@ -213,8 +206,8 @@ def subir_postal():
     imagen = request.files.get("imagen")
     if not codigo or not imagen:
         return "❌ Código o imagen faltante", 400
-    archivo = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    imagen.save(archivo)
+    ruta = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+    imagen.save(ruta)
     insertar_foto_en_postal(codigo)
     if codigo not in cola_postales:
         cola_postales.append(codigo)
@@ -223,6 +216,16 @@ def subir_postal():
 @app.route('/galeria/cliente123/<archivo>')
 def servir_imagen(archivo):
     return send_from_directory(CARPETA_CLIENTE, archivo)
+
+def insertar_foto_en_postal(codigo):
+    try:
+        base = Image.open(os.path.join(BASE, "static", "plantilla_postal.jpg")).convert("RGB")
+        foto = Image.open(os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")).convert("RGB")
+        foto = foto.resize((430, 330))
+        base.paste(foto, (90, 95))
+        base.save(os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg"))
+    except Exception as e:
+        print(f"Error generando postal para {codigo}: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
