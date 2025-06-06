@@ -82,7 +82,7 @@ def index():
     </head>
     <body>
         <video class="fondo" autoplay muted loop playsinline>
-            <source src="/static/background.mp4" type="video/mp4">
+            <source src="/static/douro_sunset.mp4" type="video/mp4">
         </video>
 
         <div class="contenedor">
