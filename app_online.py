@@ -9,6 +9,8 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
 os.makedirs(CARPETA_CLIENTE, exist_ok=True)
+
+# Cola de postales
 cola_postales = []
 
 @app.route('/')
@@ -21,36 +23,35 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Buscar tu Postal</title>
         <style>
-            body, html {
+            body {
                 margin: 0;
                 padding: 0;
-                height: 100%;
-                overflow: hidden;
                 font-family: Arial, sans-serif;
             }
 
-            #bg-video {
+            #background-video {
                 position: fixed;
                 top: 0;
                 left: 0;
-                min-width: 100%;
-                min-height: 100%;
-                object-fit: cover;
+                min-width: 100vw;
+                min-height: 100vh;
+                width: auto;
+                height: auto;
+                object-fit: contain;
                 z-index: -1;
+                background: black;
             }
 
             .contenedor {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
                 background-color: rgba(255, 255, 255, 0.92);
                 padding: 30px;
                 border-radius: 10px;
                 box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-                text-align: center;
-                width: 90%;
                 max-width: 400px;
+                width: 90%;
+                text-align: center;
+                position: relative;
+                margin: 10vh auto;
             }
 
             h1 {
@@ -83,18 +84,18 @@ def index():
                 background-color: #218838;
             }
 
-            @media (max-width: 500px) {
-                h1 {
-                    font-size: 20px;
-                }
-                button, input[type="text"] {
-                    font-size: 16px;
+            @media (max-width: 768px) {
+                .contenedor {
+                    margin-top: 40px;
+                    border-radius: 0;
+                    width: 100%;
+                    box-shadow: none;
                 }
             }
         </style>
     </head>
     <body>
-        <video autoplay muted loop id="bg-video">
+        <video autoplay muted loop id="background-video">
             <source src="/static/background.mp4" type="video/mp4">
         </video>
 
@@ -116,34 +117,30 @@ def buscar():
 
 @app.route('/ver_imagen/<codigo>')
 def ver_imagen(codigo):
-    imagen_path = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    postal_path = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-
-    if not os.path.exists(imagen_path):
-        return f"<h2>❌ La imagen para el código {codigo} no existe.</h2><a href='/'>Volver</a>"
-
-    if not os.path.exists(postal_path):
-        if not insertar_foto_en_postal(codigo):
-            return f"<h2>❌ No se pudo generar la postal para {codigo}.</h2><a href='/'>Volver</a>"
-
-    return f"""
+    archivo = f"postal_{codigo}.jpg"
+    ruta = os.path.join(CARPETA_CLIENTE, archivo)
+    if not os.path.exists(ruta):
+        return "❌ Postal no encontrada", 404
+    return render_template_string(f"""
     <html>
     <head>
         <title>Postal {codigo}</title>
         <style>
-            body {{
+            html, body {{
+                margin: 0;
+                padding: 0;
                 background: white;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                font-family: Arial, sans-serif;
-                margin: 0;
                 height: 100vh;
+                font-family: Arial, sans-serif;
             }}
             img {{
                 max-width: 90vw;
                 max-height: 80vh;
+                object-fit: contain;
                 box-shadow: 0 0 10px rgba(0,0,0,0.1);
                 margin-bottom: 20px;
             }}
@@ -151,33 +148,17 @@ def ver_imagen(codigo):
                 background-color: #007bff;
                 color: white;
                 padding: 10px 20px;
-                border-radius: 5px;
                 text-decoration: none;
+                border-radius: 5px;
             }}
         </style>
     </head>
     <body>
-        <img src="/galeria/cliente123/postal_{codigo}.jpg" alt="postal">
+        <img src="/galeria/cliente123/{archivo}" alt="postal">
         <a href="/" class="boton">⬅️ Volver</a>
     </body>
     </html>
-    """
-
-def insertar_foto_en_postal(codigo):
-    try:
-        origen = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-        fondo = os.path.join(BASE, "static", "plantilla_postal.jpg")
-        destino = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-
-        base = Image.open(fondo).convert("RGB")
-        imagen = Image.open(origen).convert("RGB")
-        imagen = imagen.resize((320, 260))
-        base.paste(imagen, (70, 90))
-        base.save(destino)
-        return True
-    except Exception as e:
-        print(f"Error generando postal {codigo}: {e}")
-        return False
+    """)
 
 @app.route('/nuevas_postales')
 def nuevas_postales():
@@ -187,23 +168,36 @@ def nuevas_postales():
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
-    codigo = request.form.get("codigo")
-    imagen = request.files.get("imagen")
+    codigo = request.form.get('codigo')
+    imagen = request.files.get('imagen')
 
     if not codigo or not imagen:
         return "❌ Código o imagen faltante", 400
 
-    imagen.save(os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg"))
+    ruta_jpg = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+    imagen.save(ruta_jpg)
+
+    generar_postal(codigo)
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
     return "✅ Imagen subida correctamente", 200
 
+def generar_postal(codigo):
+    try:
+        base = Image.open(os.path.join(BASE, "static", "plantilla_postal.jpg")).convert("RGB")
+        foto = Image.open(os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")).convert("RGB")
+        foto = foto.resize((430, 330))
+        base.paste(foto, (90, 95))
+        base.save(os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg"))
+    except Exception as e:
+        print(f"Error generando postal para {codigo}: {e}")
+
 @app.route('/galeria/cliente123/<archivo>')
 def servir_postal(archivo):
     return send_from_directory(CARPETA_CLIENTE, archivo)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host='0.0.0.0', port=port)
