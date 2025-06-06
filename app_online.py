@@ -4,7 +4,7 @@ from PIL import Image
 
 app = Flask(__name__)
 
-# Rutas de carpetas
+# Rutas
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
@@ -18,18 +18,18 @@ def index():
     <!DOCTYPE html>
     <html lang="en">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>Post Card</title>
         <style>
-            body, html {
+            html, body {
                 margin: 0;
                 padding: 0;
                 height: 100%;
-                overflow: hidden;
                 font-family: Arial, sans-serif;
+                overflow: hidden;
             }
-            video.bg-video {
+            video {
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -38,60 +38,57 @@ def index():
                 object-fit: cover;
                 z-index: -1;
             }
-            .search-container {
+            .overlay {
+                position: absolute;
+                top: 15px;
+                left: 20px;
+                color: white;
+                font-size: 24px;
+                font-weight: bold;
+                background: rgba(0, 0, 0, 0.5);
+                padding: 10px 20px;
+                border-radius: 8px;
+            }
+            .center-box {
                 position: absolute;
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                background-color: rgba(255, 255, 255, 0.4);
+                background: rgba(255,255,255,0.4);
                 padding: 30px;
                 border-radius: 12px;
                 text-align: center;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             }
             h1 {
-                margin: 0 0 15px 0;
-                font-size: 24px;
-                color: #000;
+                margin-bottom: 20px;
             }
             input[type="text"] {
                 padding: 12px;
                 width: 250px;
-                border: none;
-                border-radius: 5px 0 0 5px;
                 font-size: 16px;
+                border-radius: 6px 0 0 6px;
+                border: none;
             }
             button {
-                padding: 12px 20px;
-                background-color: #000;
+                padding: 12px 24px;
+                background: black;
                 color: white;
                 border: none;
-                border-radius: 0 5px 5px 0;
                 font-size: 16px;
+                border-radius: 0 6px 6px 0;
                 cursor: pointer;
-            }
-            .title-tag {
-                position: absolute;
-                top: 15px;
-                left: 20px;
-                background: rgba(0, 0, 0, 0.5);
-                color: white;
-                padding: 6px 16px;
-                font-size: 20px;
-                font-weight: bold;
-                border-radius: 8px;
             }
         </style>
     </head>
     <body>
-        <video autoplay loop muted class="bg-video">
-            <source src="/static/douro_sunset.mp4" type="video/mp4">
+        <video autoplay loop muted>
+            <source src="/static/douro_sunset.mp4" type="video/mp4" />
         </video>
-        <div class="title-tag">Post Card</div>
-        <div class="search-container">
+        <div class="overlay">Post Card</div>
+        <div class="center-box">
             <h1>🔍 Search your Postcard</h1>
             <form action="/search" method="get">
-                <input type="text" name="codigo" placeholder="e.g. 7fb1d2ae" required>
+                <input type="text" name="codigo" placeholder="e.g. 7fb1d2ae" required />
                 <button type="submit">Search</button>
             </form>
         </div>
@@ -108,75 +105,67 @@ def search():
 def view_image(codigo):
     original = f"/gallery/cliente123/image_{codigo}.jpg"
     postal = f"/gallery/cliente123/postcard_{codigo}.jpg"
-    html = f"""
+    return f"""
     <html>
     <head>
         <title>Postcard {codigo}</title>
         <style>
             body {{
                 font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 30px;
-                background-color: #f7f7f7;
+                padding: 40px;
+                background-color: #f0f0f0;
                 text-align: center;
             }}
             .grid {{
                 display: flex;
                 justify-content: center;
-                gap: 40px;
-                margin-top: 30px;
+                gap: 30px;
             }}
-            .card {{
+            .item {{
                 background: white;
                 padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-                width: 300px;
-            }}
-            .card img {{
-                width: 100%;
-                height: auto;
                 border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             }}
-            .card h3 {{
-                margin: 10px 0 15px 0;
+            img {{
+                max-width: 300px;
+                border-radius: 6px;
             }}
             .actions {{
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
+                margin-top: 10px;
             }}
-            .actions button {{
+            button {{
                 padding: 10px;
-                background-color: black;
+                background: black;
                 color: white;
                 border: none;
-                border-radius: 6px;
+                margin: 5px;
+                border-radius: 5px;
                 cursor: pointer;
             }}
             .back {{
-                margin-top: 30px;
                 display: inline-block;
-                background-color: #007bff;
+                margin-top: 30px;
+                background: #007bff;
                 color: white;
                 padding: 10px 20px;
-                text-decoration: none;
                 border-radius: 6px;
+                text-decoration: none;
             }}
         </style>
     </head>
     <body>
         <h2>Original Photo & Postcard</h2>
         <div class="grid">
-            <div class="card">
-                <img src="{original}" alt="original">
+            <div class="item">
+                <img src="{original}" alt="Original Photo" />
                 <div class="actions">
                     <button>Buy Print</button>
                     <button>Download JPG</button>
                 </div>
             </div>
-            <div class="card">
-                <img src="{postal}" alt="postcard">
+            <div class="item">
+                <img src="{postal}" alt="Postcard" />
                 <div class="actions">
                     <button>Buy Postcard</button>
                     <button>Send by Mail</button>
@@ -187,13 +176,11 @@ def view_image(codigo):
     </body>
     </html>
     """
-    return html
 
 @app.route('/new_postcards')
 def new_postcards():
     if cola_postales:
-        codigo = cola_postales[0]  # 🟢 Ya no se elimina
-        return jsonify({"codigo": codigo})
+        return jsonify({"codigo": cola_postales[0]})
     return jsonify({"codigo": None})
 
 @app.route('/upload_postcard', methods=['POST'])
@@ -204,9 +191,8 @@ def upload_postcard():
     if not codigo or not imagen:
         return "❌ Missing code or image", 400
 
-    img_name = f"image_{codigo}.jpg"
-    save_path = os.path.join(CARPETA_CLIENTE, img_name)
-    imagen.save(save_path)
+    ruta_imagen = os.path.join(CARPETA_CLIENTE, f"image_{codigo}.jpg")
+    imagen.save(ruta_imagen)
 
     generar_postal(codigo)
 
@@ -221,15 +207,14 @@ def serve_image(archivo):
 
 def generar_postal(codigo):
     try:
-        original = Image.open(os.path.join(CARPETA_CLIENTE, f"image_{codigo}.jpg")).convert("RGB")
+        imagen = Image.open(os.path.join(CARPETA_CLIENTE, f"image_{codigo}.jpg")).convert("RGB")
         marco = Image.open(os.path.join(BASE, "static", "plantilla_postal.jpg")).convert("RGB")
-        marco = marco.copy()
-        original = original.resize((430, 330))
-        marco.paste(original, (90, 95))
+        imagen = imagen.resize((430, 330))
+        marco.paste(imagen, (90, 95))
         salida = os.path.join(CARPETA_CLIENTE, f"postcard_{codigo}.jpg")
         marco.save(salida)
     except Exception as e:
-        print(f"Error creating postcard for {codigo}: {e}")
+        print(f"❌ Error generating postcard: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
