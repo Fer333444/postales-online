@@ -21,49 +21,83 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Buscar tu Postal</title>
         <style>
-            body {
+            body, html {
                 margin: 0;
                 padding: 0;
-                background: url('/static/nuevo_fondo_oporto.jpg') no-repeat center center fixed;
-                background-size: cover;
+                height: 100%;
+                overflow: hidden;
                 font-family: Arial, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
             }
+
+            #bg-video {
+                position: fixed;
+                top: 0;
+                left: 0;
+                min-width: 100%;
+                min-height: 100%;
+                object-fit: cover;
+                z-index: -1;
+            }
+
             .contenedor {
-                background-color: rgba(255,255,255,0.9);
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: rgba(255, 255, 255, 0.92);
                 padding: 30px;
                 border-radius: 10px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-                max-width: 400px;
-                width: 90%;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
                 text-align: center;
+                width: 90%;
+                max-width: 400px;
             }
-            h1 { margin-bottom: 20px; font-size: 24px; color: #333; }
-            input[type="text"], button {
+
+            h1 {
+                margin-bottom: 20px;
+                font-size: 24px;
+                color: #333;
+            }
+
+            input[type="text"] {
                 width: 100%;
                 padding: 12px;
-                margin-bottom: 10px;
-                font-size: 18px;
+                margin-bottom: 15px;
+                border: 1px solid #ccc;
                 border-radius: 6px;
+                font-size: 18px;
             }
-            input[type="text"] { border: 1px solid #ccc; }
+
             button {
+                padding: 12px 24px;
+                font-size: 18px;
                 background-color: #28a745;
                 color: white;
                 border: none;
+                border-radius: 6px;
                 cursor: pointer;
+                transition: background-color 0.3s ease;
             }
-            button:hover { background-color: #218838; }
-            @media (max-width: 768px) {
-                body { align-items: flex-start; padding-top: 40px; }
-                .contenedor { width: 100%; border-radius: 0 0 15px 15px; box-shadow: none; }
+
+            button:hover {
+                background-color: #218838;
+            }
+
+            @media (max-width: 500px) {
+                h1 {
+                    font-size: 20px;
+                }
+                button, input[type="text"] {
+                    font-size: 16px;
+                }
             }
         </style>
     </head>
     <body>
+        <video autoplay muted loop id="bg-video">
+            <source src="/static/background.mp4" type="video/mp4">
+        </video>
+
         <div class="contenedor">
             <h1>🔍 Buscar tu Postal</h1>
             <form action="/buscar" method="get">
