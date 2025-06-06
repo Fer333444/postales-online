@@ -4,13 +4,16 @@ from PIL import Image
 
 app = Flask(__name__)
 
+# Rutas de carpetas
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
 os.makedirs(CARPETA_CLIENTE, exist_ok=True)
 
+# Cola en memoria
 cola_postales = []
 
+# Página principal
 @app.route('/')
 def index():
     return render_template_string("""
@@ -117,13 +120,11 @@ def buscar():
 
 @app.route('/ver_imagen/<codigo>')
 def ver_imagen(codigo):
-    ruta_postal = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-    if os.path.exists(ruta_postal):
-        ruta_img = f"/galeria/cliente123/postal_{codigo}.jpg"
-    else:
-        ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
-
-    html = f"""
+    ruta_final = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+    if not os.path.exists(ruta_final):
+        insertar_foto_en_postal(codigo)
+    ruta_img = f"/galeria/cliente123/postal_{codigo}.jpg"
+    return f"""
     <html>
     <head>
         <title>Postal {codigo}</title>
@@ -161,34 +162,25 @@ def ver_imagen(codigo):
     </body>
     </html>
     """
-    return html
 
 def insertar_foto_en_postal(codigo):
-    carpeta = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    salida = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+    foto_path = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
     marco_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
+    salida_path = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
 
     try:
         base = Image.open(marco_path).convert("RGB")
-        foto = Image.open(carpeta).convert("RGB")
-
-        # Ajuste más preciso para encajar en la postal
-        tamaño_foto = (360, 250)
-        posicion = (130, 102)
-
-        foto = foto.resize(tamaño_foto)
-        base.paste(foto, posicion)
-
-        base.save(salida)
-        return True
+        foto = Image.open(foto_path).convert("RGB")
+        foto = foto.resize((430, 330))
+        base.paste(foto, (90, 95))
+        base.save(salida_path)
     except Exception as e:
-        print(f"❌ Error generando postal para {codigo}: {e}")
-        return False
+        print(f"⚠️ Error generando postal para {codigo}: {e}")
 
 @app.route('/nuevas_postales')
 def nuevas_postales():
     if cola_postales:
-        codigo = cola_postales[0]  # No eliminamos de la cola
+        codigo = cola_postales.pop(0)
         return jsonify({"codigo": codigo})
     return jsonify({"codigo": None})
 
@@ -196,15 +188,11 @@ def nuevas_postales():
 def subir_postal():
     codigo = request.form.get('codigo')
     imagen = request.files.get('imagen')
-
     if not codigo or not imagen:
         return "❌ Código o imagen faltante", 400
 
-    nombre_archivo = f"imagen_{codigo}.jpg"
-    ruta_destino = os.path.join(CARPETA_CLIENTE, nombre_archivo)
-    imagen.save(ruta_destino)
-
-    insertar_foto_en_postal(codigo)  # ✅ Agrega esta línea para generar la postal
+    ruta = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+    imagen.save(ruta)
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
