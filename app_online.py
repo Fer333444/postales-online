@@ -4,26 +4,24 @@ from PIL import Image
 
 app = Flask(__name__)
 
-# Rutas
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
 os.makedirs(CARPETA_CLIENTE, exist_ok=True)
 
-# Cola en memoria
 cola_postales = []
 
 @app.route('/')
 def index():
     return render_template_string("""
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Buscar tu Postal</title>
+        <title>Find your Postcard</title>
         <style>
-            body, html {
+            html, body {
                 margin: 0;
                 padding: 0;
                 height: 100%;
@@ -40,43 +38,54 @@ def index():
                 z-index: -1;
             }
             .contenedor {
-                position: relative;
-                z-index: 1;
-                background-color: rgba(255, 255, 255, 0.9);
-                max-width: 400px;
-                width: 90%;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: rgba(255, 255, 255, 0); /* transparente */
                 padding: 30px;
-                margin: 80px auto;
                 border-radius: 12px;
                 text-align: center;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                width: 90%;
+                max-width: 400px;
             }
             h1 {
                 margin-bottom: 20px;
                 font-size: 24px;
-                color: #333;
+                color: white;
+                text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
             }
             input[type="text"] {
                 width: 100%;
                 padding: 12px;
                 margin-bottom: 15px;
-                border: 1px solid #ccc;
+                border: none;
                 border-radius: 6px;
                 font-size: 18px;
+                background-color: rgba(255,255,255,0.7);
+                box-shadow: 0 0 5px rgba(0,0,0,0.2);
             }
             button {
                 padding: 12px 24px;
                 font-size: 18px;
-                background-color: #28a745;
+                background-color: black;
                 color: white;
                 border: none;
                 border-radius: 6px;
                 cursor: pointer;
             }
-            @media (max-width: 600px) {
-                .contenedor {
-                    margin-top: 40px;
-                }
+            button:hover {
+                background-color: #333;
+            }
+            .postcard-label {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                font-size: 30px;
+                font-weight: bold;
+                color: white;
+                text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.6);
+                font-family: Georgia, serif;
             }
         </style>
     </head>
@@ -85,11 +94,13 @@ def index():
             <source src="/static/douro_sunset.mp4" type="video/mp4">
         </video>
 
+        <div class="postcard-label">Post Card</div>
+
         <div class="contenedor">
-            <h1>🔍 Buscar tu Postal</h1>
+            <h1>🔍 Find your Postcard</h1>
             <form action="/buscar" method="get">
-                <input type="text" name="codigo" placeholder="Ej: 7fb1d2ae" pattern="[A-Za-z0-9]{5,}" required>
-                <button type="submit">Buscar</button>
+                <input type="text" name="codigo" placeholder="Example: 7fb1d2ae" pattern="[A-Za-z0-9]{5,}" required>
+                <button type="submit">Search</button>
             </form>
         </div>
     </body>
@@ -107,17 +118,17 @@ def ver_imagen(codigo):
     html = f"""
     <html>
     <head>
-        <title>Postal {codigo}</title>
+        <title>Postcard {codigo}</title>
         <style>
             body {{
                 margin: 0;
                 background: white;
+                font-family: Arial, sans-serif;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                font-family: Arial;
-                height: 100vh;
                 justify-content: center;
+                height: 100vh;
             }}
             img {{
                 max-width: 90vw;
@@ -135,8 +146,8 @@ def ver_imagen(codigo):
         </style>
     </head>
     <body>
-        <img src="{ruta_img}" alt="postal">
-        <a href="/">⬅️ Volver</a>
+        <img src="{ruta_img}" alt="postcard">
+        <a href="/">⬅️ Back</a>
     </body>
     </html>
     """
@@ -157,7 +168,7 @@ def insertar_foto_en_postal(codigo):
         base.save(salida)
         return True
     except Exception as e:
-        print(f"Error al generar postal: {e}")
+        print(f"Error inserting postcard: {e}")
         return False
 
 @app.route('/nuevas_postales')
@@ -168,11 +179,11 @@ def nuevas_postales():
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
-    codigo = request.form.get("codigo")
-    imagen = request.files.get("imagen")
+    codigo = request.form.get('codigo')
+    imagen = request.files.get('imagen')
 
     if not codigo or not imagen:
-        return "Faltan datos", 400
+        return "Missing code or image", 400
 
     nombre = f"imagen_{codigo}.jpg"
     ruta = os.path.join(CARPETA_CLIENTE, nombre)
@@ -183,7 +194,7 @@ def subir_postal():
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
-    return "✅ Postal subida", 200
+    return "✅ Uploaded successfully", 200
 
 @app.route('/galeria/cliente123/<archivo>')
 def servir_postal(archivo):
