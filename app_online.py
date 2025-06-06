@@ -4,16 +4,13 @@ from PIL import Image
 
 app = Flask(__name__)
 
-# Rutas de carpetas
+# Rutas
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
 os.makedirs(CARPETA_CLIENTE, exist_ok=True)
-
-# Cola en memoria
 cola_postales = []
 
-# Página principal
 @app.route('/')
 def index():
     return render_template_string("""
@@ -35,69 +32,34 @@ def index():
                 align-items: center;
                 min-height: 100vh;
             }
-
             .contenedor {
-                background-color: rgba(255, 255, 255, 0.92);
+                background-color: rgba(255,255,255,0.9);
                 padding: 30px;
                 border-radius: 10px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
                 max-width: 400px;
                 width: 90%;
                 text-align: center;
             }
-
-            h1 {
-                margin-bottom: 20px;
-                font-size: 24px;
-                color: #333;
-            }
-
-            input[type="text"] {
+            h1 { margin-bottom: 20px; font-size: 24px; color: #333; }
+            input[type="text"], button {
                 width: 100%;
                 padding: 12px;
-                margin-bottom: 15px;
-                border: 1px solid #ccc;
+                margin-bottom: 10px;
+                font-size: 18px;
                 border-radius: 6px;
-                font-size: 18px;
             }
-
+            input[type="text"] { border: 1px solid #ccc; }
             button {
-                padding: 12px 24px;
-                font-size: 18px;
                 background-color: #28a745;
                 color: white;
                 border: none;
-                border-radius: 6px;
                 cursor: pointer;
-                transition: background-color 0.3s ease;
             }
-
-            button:hover {
-                background-color: #218838;
-            }
-
+            button:hover { background-color: #218838; }
             @media (max-width: 768px) {
-                body {
-                    align-items: flex-start;
-                    padding-top: 40px;
-                }
-
-                .contenedor {
-                    margin-top: 0;
-                    border-radius: 0 0 15px 15px;
-                    max-width: 100%;
-                    width: 100%;
-                    box-shadow: none;
-                    background-color: rgba(255, 255, 255, 0.95);
-                }
-
-                h1 {
-                    font-size: 20px;
-                }
-
-                button, input[type="text"] {
-                    font-size: 16px;
-                }
+                body { align-items: flex-start; padding-top: 40px; }
+                .contenedor { width: 100%; border-radius: 0 0 15px 15px; box-shadow: none; }
             }
         </style>
     </head>
@@ -120,30 +82,34 @@ def buscar():
 
 @app.route('/ver_imagen/<codigo>')
 def ver_imagen(codigo):
-    ruta_final = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-    if not os.path.exists(ruta_final):
-        insertar_foto_en_postal(codigo)
-    ruta_img = f"/galeria/cliente123/postal_{codigo}.jpg"
+    imagen_path = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+    postal_path = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+
+    if not os.path.exists(imagen_path):
+        return f"<h2>❌ La imagen para el código {codigo} no existe.</h2><a href='/'>Volver</a>"
+
+    if not os.path.exists(postal_path):
+        if not insertar_foto_en_postal(codigo):
+            return f"<h2>❌ No se pudo generar la postal para {codigo}.</h2><a href='/'>Volver</a>"
+
     return f"""
     <html>
     <head>
         <title>Postal {codigo}</title>
         <style>
-            html, body {{
-                margin: 0;
-                padding: 0;
+            body {{
                 background: white;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
                 align-items: center;
-                height: 100vh;
                 font-family: Arial, sans-serif;
+                margin: 0;
+                height: 100vh;
             }}
             img {{
                 max-width: 90vw;
                 max-height: 80vh;
-                object-fit: contain;
                 box-shadow: 0 0 10px rgba(0,0,0,0.1);
                 margin-bottom: 20px;
             }}
@@ -151,13 +117,13 @@ def ver_imagen(codigo):
                 background-color: #007bff;
                 color: white;
                 padding: 10px 20px;
-                text-decoration: none;
                 border-radius: 5px;
+                text-decoration: none;
             }}
         </style>
     </head>
     <body>
-        <img src="{ruta_img}" alt="postal">
+        <img src="/galeria/cliente123/postal_{codigo}.jpg" alt="postal">
         <a href="/" class="boton">⬅️ Volver</a>
     </body>
     </html>
@@ -165,43 +131,35 @@ def ver_imagen(codigo):
 
 def insertar_foto_en_postal(codigo):
     try:
-        ruta_foto = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-        ruta_salida = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-        plantilla_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
+        origen = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+        fondo = os.path.join(BASE, "static", "plantilla_postal.jpg")
+        destino = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
 
-        base = Image.open(plantilla_path).convert("RGB")
-        foto = Image.open(ruta_foto).convert("RGB")
-
-        # Redimensionar la foto a tamaño más pequeño
-        tamaño_foto = (410, 270)  # ajustado a parte inferior
-        foto = foto.resize(tamaño_foto)
-
-        # Posición en la parte inferior de la postal
-        posicion = (100, 295)  # izquierda y alto desde arriba
-
-        base.paste(foto, posicion)
-        base.save(ruta_salida)
+        base = Image.open(fondo).convert("RGB")
+        imagen = Image.open(origen).convert("RGB")
+        imagen = imagen.resize((320, 260))
+        base.paste(imagen, (70, 90))
+        base.save(destino)
         return True
     except Exception as e:
-        print(f"⚠️ Error generando postal para {codigo}: {e}")
+        print(f"Error generando postal {codigo}: {e}")
         return False
 
 @app.route('/nuevas_postales')
 def nuevas_postales():
     if cola_postales:
-        codigo = cola_postales.pop(0)
-        return jsonify({"codigo": codigo})
+        return jsonify({"codigo": cola_postales[0]})
     return jsonify({"codigo": None})
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
-    codigo = request.form.get('codigo')
-    imagen = request.files.get('imagen')
+    codigo = request.form.get("codigo")
+    imagen = request.files.get("imagen")
+
     if not codigo or not imagen:
         return "❌ Código o imagen faltante", 400
 
-    ruta = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    imagen.save(ruta)
+    imagen.save(os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg"))
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
@@ -212,6 +170,6 @@ def subir_postal():
 def servir_postal(archivo):
     return send_from_directory(CARPETA_CLIENTE, archivo)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)
