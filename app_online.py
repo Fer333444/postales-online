@@ -1,9 +1,9 @@
-
 import os
 from flask import Flask, request, send_from_directory, jsonify, redirect, render_template_string
 from PIL import Image
 
 app = Flask(__name__)
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
@@ -95,91 +95,65 @@ def ver_imagen(codigo):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Shop</title>
+        <title>Shop View</title>
         <style>
-            body { font-family: Arial; margin: 0; padding: 20px; background: #f0f0f0; }
+            body { font-family: Arial; margin: 0; padding: 20px; background: #f5f5f5; }
             .grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
             .product {
                 background: white;
+                padding: 20px;
                 border-radius: 10px;
-                padding: 15px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                 width: 250px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                 text-align: center;
             }
-            img { max-width: 100%; border-radius: 8px; }
-            select, input { margin-top: 8px; padding: 6px; border-radius: 4px; }
-            button { margin-top: 8px; padding: 8px 16px; background: black; color: white; border: none; border-radius: 6px; }
-            .sidebar {
-                position: fixed;
-                top: 0; right: -400px;
-                width: 350px; height: 100%;
-                background: white; box-shadow: -3px 0 6px rgba(0,0,0,0.2);
-                z-index: 999; overflow-y: auto; padding: 20px;
-                transition: right 0.3s ease-in-out;
-            }
-            .sidebar.active { right: 0; }
-            .sidebar-header {
-                display: flex; justify-content: space-between; font-weight: bold;
-            }
-            .cart-button {
+            img { max-width: 100%; border-radius: 6px; }
+            button { padding: 10px 20px; background: black; color: white; border: none; margin-top: 10px; }
+            #cart {
                 position: fixed;
                 top: 20px; right: 20px;
-                background: #000; color: white;
-                padding: 12px 18px; border: none;
-                z-index: 1000;
+                background: #fff;
+                padding: 15px;
+                border-radius: 10px;
+                box-shadow: 0 0 6px rgba(0,0,0,0.2);
             }
         </style>
         <script>
             let cart = [];
 
             function addToCart(name, qty, size) {
-                cart.push({ name, qty: parseInt(qty), size });
+                cart.push({ name, qty, size });
                 renderCart();
             }
 
             function renderCart() {
-                let html = "<h3>🛒 Your Cart</h3><ul>";
-                let total = 0;
+                let html = "<h3>🛒 Cart</h3><ul>";
                 cart.forEach(item => {
                     html += `<li>${item.qty} × ${item.name} [${item.size}]</li>`;
-                    total += item.qty;
                 });
-                html += "</ul><p>Total Items: " + total + "</p>";
-                html += "<button style='background:#635BFF;'>Pay with Stripe</button> ";
-                html += "<button style='background:#FFC439;color:black;'>Pay with PayPal</button>";
-                document.getElementById("sidebarContent").innerHTML = html;
-            }
-
-            function toggleSidebar() {
-                document.getElementById("sidebar").classList.toggle("active");
+                html += "</ul><p><button>Stripe</button> <button>PayPal</button></p>";
+                document.getElementById("cart").innerHTML = html;
             }
         </script>
     </head>
     <body>
-        <button class="cart-button" onclick="toggleSidebar()">🛒 Cart</button>
-        <div id="sidebar" class="sidebar">
-            <div class="sidebar-header">
-                <span>Your Cart</span>
-                <button onclick="toggleSidebar()">✖</button>
-            </div>
-            <div id="sidebarContent"></div>
-        </div>
-        <h2>📸 Your Photo & Postcard</h2>
+        <h2>📸 Your Postcard & Shop</h2>
         <div class="grid">
             <div class="product">
-                <img src="{{ ruta_img }}" alt="Photo" />
+                <img src="{{ ruta_img }}">
                 <p>Original Photo</p>
-                <label>Qty:</label><input type="number" id="qty1" value="1" min="1" /><br>
+                Qty: <input id="qty1" value="1" />
                 <button onclick="addToCart('Original Photo', document.getElementById('qty1').value, '-')">Add to Cart</button>
             </div>
             <div class="product">
-                <img src="{{ ruta_postal }}" alt="Postcard" />
+                <img src="{{ ruta_postal }}">
                 <p>Postcard</p>
-                <label>Qty:</label><input type="number" id="qty2" value="1" min="1" /><br>
+                Qty: <input id="qty2" value="1" />
                 <button onclick="addToCart('Postcard', document.getElementById('qty2').value, '-')">Add to Cart</button>
             </div>
         </div>
+        <div id="cart"></div>
+        <br><a href="/">← Back</a>
     </body>
     </html>
     """, ruta_img=ruta_img, ruta_postal=ruta_postal)
