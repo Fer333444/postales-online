@@ -91,6 +91,8 @@ def buscar():
 def ver_imagen(codigo):
     ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
     ruta_postal = f"/galeria/cliente123/postal_{codigo}.jpg"
+
+    # Aquí insertas directamente el HTML con JS funcional (puedo preparártelo si lo deseas aparte)
     return render_template_string("""
     <!DOCTYPE html>
     <html>
@@ -107,7 +109,7 @@ def ver_imagen(codigo):
                 width: 260px;
                 position: relative;
             }
-            .item img, .product img {
+            img {
                 width: 100%;
                 border-radius: 6px;
             }
@@ -139,13 +141,25 @@ def ver_imagen(codigo):
             }
         </style>
         <script>
+            let cart = {};
+
             function addQty(id) {
                 let el = document.getElementById(id);
                 el.innerText = parseInt(el.innerText) + 1;
+                cart[id] = (cart[id] || 0) + 1;
+                updateCart();
             }
             function subQty(id) {
                 let el = document.getElementById(id);
-                if (parseInt(el.innerText) > 0) el.innerText = parseInt(el.innerText) - 1;
+                if (parseInt(el.innerText) > 0) {
+                    el.innerText = parseInt(el.innerText) - 1;
+                    cart[id] = Math.max((cart[id] || 0) - 1, 0);
+                    updateCart();
+                }
+            }
+            function updateCart() {
+                let total = Object.values(cart).reduce((a, b) => a + b, 0);
+                document.getElementById("cartTotal").innerText = total;
             }
         </script>
     </head>
@@ -156,9 +170,9 @@ def ver_imagen(codigo):
                 <img src="{{ ruta_img }}" alt="Original">
                 <p><strong>Original Photo</strong></p>
                 <div class="qty">
-                    <button onclick="subQty('qty1')">−</button>
-                    <span id="qty1">0</span>
-                    <button onclick="addQty('qty1')">+</button>
+                    <button onclick="subQty('photo')">−</button>
+                    <span id="photo">0</span>
+                    <button onclick="addQty('photo')">+</button>
                 </div>
                 <button>Add to Cart</button>
             </div>
@@ -166,21 +180,23 @@ def ver_imagen(codigo):
                 <img src="{{ ruta_postal }}" alt="Postcard">
                 <p><strong>Postcard</strong></p>
                 <div class="qty">
-                    <button onclick="subQty('qty2')">−</button>
-                    <span id="qty2">0</span>
-                    <button onclick="addQty('qty2')">+</button>
+                    <button onclick="subQty('postal')">−</button>
+                    <span id="postal">0</span>
+                    <button onclick="addQty('postal')">+</button>
                 </div>
                 <button>Add to Cart</button>
             </div>
         </div>
 
-        <h2>👕 T-Shirts</h2>
-        <div class="grid">
-            {% for group in ['Men', 'Women', 'Boys', 'Girls'] %}
+        <h2>👕 T-Shirts by Category</h2>
+        {% for group in ['Men', 'Women', 'Boys', 'Girls'] %}
+            <h3>{{ group }}</h3>
+            <div class="grid">
                 {% for color in ['White', 'Black'] %}
                     <div class="product">
                         <img src="/static/{{ color | lower }}_shirt.jpg" alt="{{ color }} Shirt">
-                        <p><strong>{{ color }} T-Shirt ({{ group }})</strong></p>
+                        <p><strong>{{ color }} T-Shirt</strong></p>
+                        <label>Size:</label>
                         <select>
                             {% for size in ['XS','S','M','L','XL'] %}
                                 <option>{{ size }}</option>
@@ -194,11 +210,11 @@ def ver_imagen(codigo):
                         <button>Add to Cart</button>
                     </div>
                 {% endfor %}
-            {% endfor %}
-        </div>
+            </div>
+        {% endfor %}
 
         <div class="cart">
-            🛒 Cart (visual only)<br>Items: <span id="cartTotal">--</span><br><em>(integration coming soon)</em>
+            🛒 Cart (visual only)<br>Items: <span id="cartTotal">0</span>
         </div>
         <br><a href="/">⬅ Back</a>
     </body>
