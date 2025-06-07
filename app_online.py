@@ -8,195 +8,105 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
 os.makedirs(CARPETA_CLIENTE, exist_ok=True)
+
 cola_postales = []
 
 @app.route('/')
 def index():
     return render_template_string("""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <title>Postcard Shop</title>
-        <style>
-            body, html {
-                margin: 0;
-                padding: 0;
-                font-family: Arial, sans-serif;
-                background: #f7f7f7;
-            }
-            header {
-                background: #000;
-                color: white;
-                padding: 10px 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            header a {
-                color: white;
-                text-decoration: none;
-                font-weight: bold;
-            }
-            .container {
-                padding: 20px;
-            }
-            .grid {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 20px;
-                justify-content: center;
-            }
-            .product {
-                background: white;
-                border-radius: 10px;
-                padding: 15px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-                width: 250px;
-                text-align: center;
-            }
-            img {
-                max-width: 100%;
-                border-radius: 8px;
-            }
-            select, input {
-                margin-top: 8px;
-                padding: 6px;
-                border-radius: 4px;
-                width: 80%;
-            }
-            button {
-                margin-top: 8px;
-                padding: 10px 16px;
-                background: black;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                width: 80%;
-            }
-        </style>
-        <script>
-            let cart = [];
-
-            function addToCart(name, qty, size) {
-                cart.push({ name, qty, size });
-                alert(name + " added to cart!");
-                localStorage.setItem("cart", JSON.stringify(cart));
-            }
-
-            function loadCart() {
-                return JSON.parse(localStorage.getItem("cart") || "[]");
-            }
-        </script>
-    </head>
-    <body>
-        <header>
-            <span>🛍️ Postcard Shop</span>
-            <a href="/cart">🛒 View Cart</a>
-        </header>
-        <div class="container">
-            <h2>👕 T-Shirts</h2>
-            <div class="grid">
-                {% for group in ['Men', 'Women', 'Kids'] %}
-                    {% for color in ['White', 'Black'] %}
-                        <div class="product">
-                            <img src="/static/{{ color | lower }}_shirt.jpg" />
-                            <p>{{ color }} T-Shirt ({{ group }})</p>
-                            <label>Size:</label>
-                            <select id="size_{{group}}{{color}}">
-                                {% for s in ['XS','S','M','L','XL'] %}<option>{{s}}</option>{% endfor %}
-                            </select>
-                            <label>Qty:</label>
-                            <input type="number" id="qty_{{group}}{{color}}" value="1" min="1"/><br>
-                            <button onclick="addToCart('{{ color }} T-Shirt - {{ group }}', document.getElementById('qty_{{group}}{{color}}').value, document.getElementById('size_{{group}}{{color}}').value)">Add to Cart</button>
-                        </div>
-                    {% endfor %}
-                {% endfor %}
-            </div>
-        </div>
-    </body>
-    </html>
+    <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Postcard Shop</title></head>
+    <body style="font-family:Arial;text-align:center;padding:50px;">
+        <h1>🔍 Search Your Postcard</h1>
+        <form action="/search" method="get">
+            <input name="codigo" required placeholder="Enter code" style="padding:10px;width:300px;">
+            <button type="submit" style="padding:10px 20px;">Search</button>
+        </form>
+        <br><a href="/shop">🛍️ Visit Shop</a>
+    </body></html>
     """)
 
-@app.route('/cart')
-def view_cart():
-    return render_template_string("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Your Cart</title>
-        <style>
-            body {
-                font-family: Arial;
-                margin: 0;
-                padding: 20px;
-                background: #f0f0f0;
-            }
-            .container {
-                max-width: 800px;
-                margin: auto;
-                background: white;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            }
-            h2 {
-                text-align: center;
-            }
-            ul {
-                list-style: none;
-                padding: 0;
-            }
-            li {
-                padding: 10px;
-                border-bottom: 1px solid #ccc;
-            }
-            .buttons {
-                text-align: center;
-                margin-top: 20px;
-            }
-            .buttons button {
-                margin: 0 10px;
-                padding: 10px 20px;
-                border: none;
-                background: black;
-                color: white;
-                border-radius: 6px;
-            }
-        </style>
-        <script>
-            function loadCartItems() {
-                const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-                const list = document.getElementById("cartItems");
-                let html = "";
-                cart.forEach(item => {
-                    html += `<li>🛒 ${item.qty} × ${item.name} (${item.size})</li>`;
-                });
-                list.innerHTML = html;
-            }
+@app.route('/search')
+def buscar():
+    codigo = request.args.get("codigo", "").strip()
+    return redirect(f"/view_image/{codigo}")
 
-            window.onload = loadCartItems;
-        </script>
-    </head>
-    <body>
-        <div class="container">
-            <h2>Your Shopping Cart</h2>
-            <ul id="cartItems"></ul>
-            <div class="buttons">
-                <button>Pay with Stripe</button>
-                <button>Pay with PayPal</button>
-            </div>
-            <br><a href="/">← Back to Shop</a>
+@app.route('/view_image/<codigo>')
+def ver_imagen(codigo):
+    ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
+    ruta_postal = f"/galeria/cliente123/postal_{codigo}.jpg"
+    return render_template_string(f"""
+    <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Postcard View</title></head>
+    <body style="font-family:Arial;text-align:center;padding:40px;">
+        <h2>Your Postcard & Original</h2>
+        <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">
+            <div><img src="{ruta_img}" width="300"><p>Original</p></div>
+            <div><img src="{ruta_postal}" width="300"><p>Postcard</p></div>
         </div>
-    </body>
-    </html>
+        <br><a href="/">← Back</a>
+    </body></html>
+    """)
+
+@app.route('/subir_postal', methods=['POST'])
+def subir_postal():
+    codigo = request.form.get("codigo")
+    imagen = request.files.get("imagen")
+    if not codigo or not imagen:
+        return "❌ Código o imagen faltante", 400
+
+    path_img = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+    path_postal = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+    imagen.save(path_img)
+
+    insertar_foto_en_postal(codigo)
+    if codigo not in cola_postales:
+        cola_postales.append(codigo)
+
+    imprimir_postal(path_postal)
+    return "✅ Imagen subida correctamente", 200
+
+@app.route('/shop')
+def tienda():
+    return render_template_string("""
+    <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Shop</title></head>
+    <body style="font-family:Arial;padding:30px;">
+        <h2>👕 T-Shirts</h2>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            {% for color in ['White','Black'] %}
+            <div style="border:1px solid #ccc;padding:15px;width:200px;">
+                <img src="/static/{{ color | lower }}_shirt.jpg" width="180"><br><br>
+                <b>{{ color }} Shirt</b><br>
+                <select>{% for s in ['XS','S','M','L','XL'] %}<option>{{s}}</option>{% endfor %}</select><br>
+                <input type="number" min="1" value="1" style="width:50px;margin-top:5px;"><br>
+                <button style="margin-top:10px;">Add to Cart</button>
+            </div>
+            {% endfor %}
+        </div>
+        <br><a href="/">← Back</a>
+    </body></html>
     """)
 
 @app.route('/galeria/cliente123/<archivo>')
 def servir_imagen(archivo):
     return send_from_directory(CARPETA_CLIENTE, archivo)
 
-if __name__ == '__main__':
+def insertar_foto_en_postal(codigo):
+    try:
+        base = Image.open(os.path.join(BASE, "static", "plantilla_postal.jpg")).convert("RGB")
+        foto = Image.open(os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")).convert("RGB")
+        foto = foto.resize((430, 330))
+        base.paste(foto, (90, 95))
+        base.save(os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg"))
+    except Exception as e:
+        print(f"❌ Error generando postal: {e}")
+
+def imprimir_postal(path_postal):
+    try:
+        full_path = os.path.abspath(path_postal)
+        os.system(f'start /min "" "{full_path}"')
+        # o usa SumatraPDF si lo tienes instalado: os.system(f'start /min SumatraPDF.exe -print-to-default "{full_path}"')
+    except Exception as e:
+        print(f"❌ Error imprimiendo postal: {e}")
+
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
