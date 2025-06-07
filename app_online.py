@@ -91,8 +91,6 @@ def buscar():
 def ver_imagen(codigo):
     ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
     ruta_postal = f"/galeria/cliente123/postal_{codigo}.jpg"
-
-    # Aquí insertas directamente el HTML con JS funcional (puedo preparártelo si lo deseas aparte)
     return render_template_string("""
     <!DOCTYPE html>
     <html>
@@ -107,7 +105,6 @@ def ver_imagen(codigo):
                 padding: 20px;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 width: 260px;
-                position: relative;
             }
             img {
                 width: 100%;
@@ -142,23 +139,25 @@ def ver_imagen(codigo):
         </style>
         <script>
             let cart = {};
-
             function addQty(id) {
-                let el = document.getElementById(id);
-                el.innerText = parseInt(el.innerText) + 1;
                 cart[id] = (cart[id] || 0) + 1;
+                document.getElementById(id).innerText = cart[id];
                 updateCart();
             }
             function subQty(id) {
-                let el = document.getElementById(id);
-                if (parseInt(el.innerText) > 0) {
-                    el.innerText = parseInt(el.innerText) - 1;
-                    cart[id] = Math.max((cart[id] || 0) - 1, 0);
+                if (cart[id]) {
+                    cart[id] = Math.max(cart[id] - 1, 0);
+                    document.getElementById(id).innerText = cart[id];
                     updateCart();
                 }
             }
+            function addToCart(id) {
+                if (!cart[id]) cart[id] = 1;
+                document.getElementById(id).innerText = cart[id];
+                updateCart();
+            }
             function updateCart() {
-                let total = Object.values(cart).reduce((a, b) => a + b, 0);
+                const total = Object.values(cart).reduce((a, b) => a + b, 0);
                 document.getElementById("cartTotal").innerText = total;
             }
         </script>
@@ -174,7 +173,7 @@ def ver_imagen(codigo):
                     <span id="photo">0</span>
                     <button onclick="addQty('photo')">+</button>
                 </div>
-                <button>Add to Cart</button>
+                <button onclick="addToCart('photo')">Add to Cart</button>
             </div>
             <div class="item">
                 <img src="{{ ruta_postal }}" alt="Postcard">
@@ -184,7 +183,7 @@ def ver_imagen(codigo):
                     <span id="postal">0</span>
                     <button onclick="addQty('postal')">+</button>
                 </div>
-                <button>Add to Cart</button>
+                <button onclick="addToCart('postal')">Add to Cart</button>
             </div>
         </div>
 
@@ -207,14 +206,13 @@ def ver_imagen(codigo):
                             <span id="{{ group }}{{ color }}">0</span>
                             <button onclick="addQty('{{ group }}{{ color }}')">+</button>
                         </div>
-                        <button>Add to Cart</button>
+                        <button onclick="addToCart('{{ group }}{{ color }}')">Add to Cart</button>
                     </div>
                 {% endfor %}
             </div>
         {% endfor %}
-
         <div class="cart">
-            🛒 Cart (visual only)<br>Items: <span id="cartTotal">0</span>
+            🛒 Cart: <span id="cartTotal">0</span> items
         </div>
         <br><a href="/">⬅ Back</a>
     </body>
