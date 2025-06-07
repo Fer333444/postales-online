@@ -16,106 +16,53 @@ def index():
     <!DOCTYPE html>
     <html lang="en">
     <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <title>Postcard Search</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Postcard & Shop</title>
         <style>
-            html, body {
-                margin: 0; padding: 0;
-                height: 100vh;
+            body {
                 font-family: Arial, sans-serif;
-                overflow: hidden;
+                margin: 0;
+                padding: 0;
+                background: #f0f0f0;
             }
-            video#bgVideo {
-                position: fixed;
-                right: 0; bottom: 0;
-                min-width: 100%; min-height: 100%;
-                object-fit: cover;
-                z-index: -1;
+            .container {
+                padding: 20px;
             }
-            .title-overlay {
-                position: absolute;
-                top: 20px; left: 20px;
-                font-size: 28px;
-                background: rgba(0,0,0,0.4);
-                color: white;
-                padding: 8px 15px;
-                border-radius: 8px;
+            .grid {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 20px;
+                justify-content: center;
             }
-            .contenedor {
-                background: rgba(255,255,255,0.6);
-                backdrop-filter: blur(5px);
-                max-width: 400px;
-                margin: 20vh auto;
-                padding: 30px;
+            .card {
+                background: white;
                 border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                width: 240px;
+                padding: 15px;
                 text-align: center;
             }
-            input[type="text"], button {
+            img {
                 width: 100%;
-                padding: 12px;
-                margin-top: 10px;
-                font-size: 18px;
+                height: 200px;
+                object-fit: cover;
                 border-radius: 6px;
-                border: none;
+            }
+            select, input {
+                margin-top: 8px;
+                padding: 6px;
+                font-size: 14px;
             }
             button {
-                background: #000;
+                background: black;
                 color: white;
+                border: none;
+                padding: 10px;
+                margin-top: 10px;
                 cursor: pointer;
-            }
-        </style>
-    </head>
-    <body>
-        <video autoplay muted loop id="bgVideo">
-            <source src="/static/douro_sunset.mp4" type="video/mp4">
-        </video>
-        <div class="title-overlay">Post Card</div>
-        <div class="contenedor">
-            <h1>🔍 Search your Postcard</h1>
-            <form action="/search" method="get">
-                <input type="text" name="codigo" placeholder="Ex: 7fb1d2ae" required />
-                <button type="submit">Search</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    """)
-
-@app.route('/search')
-def buscar():
-    codigo = request.args.get("codigo", "").strip()
-    return redirect(f"/view_image/{codigo}")
-
-@app.route('/view_image/<codigo>')
-def ver_imagen(codigo):
-    ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
-    ruta_postal = f"/galeria/cliente123/postal_{codigo}.jpg"
-    return render_template_string("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Shop View</title>
-        <style>
-            body { font-family: Arial; margin: 0; padding: 20px; background: #f5f5f5; }
-            .grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-            .product {
-                background: white;
-                padding: 20px;
-                border-radius: 10px;
-                width: 250px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-                text-align: center;
-            }
-            img { max-width: 100%; border-radius: 6px; }
-            button { padding: 10px 20px; background: black; color: white; border: none; margin-top: 10px; }
-            #cart {
-                position: fixed;
-                top: 20px; right: 20px;
-                background: #fff;
-                padding: 15px;
-                border-radius: 10px;
-                box-shadow: 0 0 6px rgba(0,0,0,0.2);
+                width: 100%;
+                border-radius: 5px;
             }
         </style>
         <script>
@@ -123,40 +70,37 @@ def ver_imagen(codigo):
 
             function addToCart(name, qty, size) {
                 cart.push({ name, qty, size });
-                renderCart();
-            }
-
-            function renderCart() {
-                let html = "<h3>🛒 Cart</h3><ul>";
-                cart.forEach(item => {
-                    html += `<li>${item.qty} × ${item.name} [${item.size}]</li>`;
-                });
-                html += "</ul><p><button>Stripe</button> <button>PayPal</button></p>";
-                document.getElementById("cart").innerHTML = html;
+                alert(`${qty} x ${name} (${size}) added to cart`);
             }
         </script>
     </head>
     <body>
-        <h2>📸 Your Postcard & Shop</h2>
-        <div class="grid">
-            <div class="product">
-                <img src="{{ ruta_img }}">
-                <p>Original Photo</p>
-                Qty: <input id="qty1" value="1" />
-                <button onclick="addToCart('Original Photo', document.getElementById('qty1').value, '-')">Add to Cart</button>
-            </div>
-            <div class="product">
-                <img src="{{ ruta_postal }}">
-                <p>Postcard</p>
-                Qty: <input id="qty2" value="1" />
-                <button onclick="addToCart('Postcard', document.getElementById('qty2').value, '-')">Add to Cart</button>
-            </div>
+        <div class="container">
+            <h2>👕 T-Shirts by Category</h2>
+            {% for group in ['Men', 'Women', 'Kids'] %}
+                <h3>{{ group }}</h3>
+                <div class="grid">
+                    {% for color in ['White', 'Black'] %}
+                    <div class="card">
+                        <img src="/static/{{ color | lower }}_shirt.jpg" alt="{{ color }} Shirt">
+                        <p><strong>{{ color }} T-Shirt</strong></p>
+                        <label>Size:</label>
+                        <select id="size_{{group}}{{color}}">
+                            {% for s in ['XS','S','M','L','XL'] %}<option>{{s}}</option>{% endfor %}
+                        </select>
+                        <label>Qty:</label>
+                        <input type="number" id="qty_{{group}}{{color}}" value="1" min="1"><br>
+                        <button onclick="addToCart('{{ color }} T-Shirt - {{ group }}', document.getElementById('qty_{{group}}{{color}}').value, document.getElementById('size_{{group}}{{color}}').value)">
+                            Add to Cart
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
         </div>
-        <div id="cart"></div>
-        <br><a href="/">← Back</a>
     </body>
     </html>
-    """, ruta_img=ruta_img, ruta_postal=ruta_postal)
+    """)
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
