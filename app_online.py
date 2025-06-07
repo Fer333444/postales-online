@@ -1,3 +1,4 @@
+
 import os
 from flask import Flask, request, send_from_directory, jsonify, redirect, render_template_string
 from PIL import Image
@@ -95,148 +96,94 @@ def ver_imagen(codigo):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Postcard {{codigo}}</title>
+        <title>Cart</title>
         <style>
-            body { font-family: Arial; background: #f8f9fa; margin: 0; padding: 20px; text-align: center; }
-            .grid { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-            .item, .product {
+            body { font-family: Arial; margin: 0; padding: 20px; background: #f0f0f0; }
+            .grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+            .product {
                 background: white;
                 border-radius: 10px;
-                padding: 20px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                width: 260px;
+                padding: 15px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                width: 250px;
+                text-align: center;
             }
-            img {
-                width: 100%;
-                border-radius: 6px;
-            }
-            .qty {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                gap: 10px;
-                margin: 10px 0;
-            }
-            .qty button {
-                padding: 6px 12px;
-                font-size: 16px;
-                cursor: pointer;
-            }
-            .qty span {
-                font-size: 16px;
-                width: 30px;
-                display: inline-block;
-            }
-            .cart {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: white;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            }
+            img { max-width: 100%; border-radius: 8px; }
+            select, input { margin-top: 8px; padding: 6px; border-radius: 4px; }
+            button { margin-top: 8px; padding: 8px 16px; background: black; color: white; border: none; border-radius: 6px; }
+            #cart { margin-top: 30px; background: #fff; padding: 15px; border-radius: 10px; width: 80%; margin-left: auto; margin-right: auto; }
         </style>
         <script>
-            let cart = {};
-            function addQty(id) {
-                cart[id] = (cart[id] || 0) + 1;
-                document.getElementById(id).innerText = cart[id];
-                updateCart();
+            let cart = [];
+
+            function addToCart(name, qty, size) {
+                cart.push({ name, qty, size });
+                renderCart();
             }
-            function subQty(id) {
-                if (cart[id]) {
-                    cart[id] = Math.max(cart[id] - 1, 0);
-                    document.getElementById(id).innerText = cart[id];
-                    updateCart();
-                }
-            }
-            function addToCart(id) {
-                if (!cart[id]) cart[id] = 1;
-                document.getElementById(id).innerText = cart[id];
-                updateCart();
-            }
-            function updateCart() {
-                const total = Object.values(cart).reduce((a, b) => a + b, 0);
-                document.getElementById("cartTotal").innerText = total;
+
+            function renderCart() {
+                let html = "<h3>🛒 Your Cart</h3><ul>";
+                cart.forEach(item => {
+                    html += `<li>${item.qty} × ${item.name} [${item.size}]</li>`;
+                });
+                html += "</ul><p><button>Pay with Stripe</button> <button>Pay with PayPal</button></p>";
+                document.getElementById("cart").innerHTML = html;
             }
         </script>
     </head>
     <body>
-        <h2>🖼️ Your Photo & Postcard</h2>
+        <h2>📸 Your Photo & Postcard</h2>
         <div class="grid">
-            <div class="item">
-                <img src="{{ ruta_img }}" alt="Original">
-                <p><strong>Original Photo</strong></p>
-                <div class="qty">
-                    <button onclick="subQty('photo')">−</button>
-                    <span id="photo">0</span>
-                    <button onclick="addQty('photo')">+</button>
-                </div>
-                <button onclick="addToCart('photo')">Add to Cart</button>
+            <div class="product">
+                <img src="{{ ruta_img }}" alt="Photo" />
+                <p>Original Photo</p>
+                <label>Qty:</label><input type="number" id="qty1" value="1" min="1" /><br>
+                <button onclick="addToCart('Original Photo', document.getElementById('qty1').value, '-')">Add to Cart</button>
             </div>
-            <div class="item">
-                <img src="{{ ruta_postal }}" alt="Postcard">
-                <p><strong>Postcard</strong></p>
-                <div class="qty">
-                    <button onclick="subQty('postal')">−</button>
-                    <span id="postal">0</span>
-                    <button onclick="addQty('postal')">+</button>
-                </div>
-                <button onclick="addToCart('postal')">Add to Cart</button>
+            <div class="product">
+                <img src="{{ ruta_postal }}" alt="Postcard" />
+                <p>Postcard</p>
+                <label>Qty:</label><input type="number" id="qty2" value="1" min="1" /><br>
+                <button onclick="addToCart('Postcard', document.getElementById('qty2').value, '-')">Add to Cart</button>
             </div>
         </div>
-
-        <h2>👕 T-Shirts by Category</h2>
-        {% for group in ['Men', 'Women', 'Boys', 'Girls'] %}
-            <h3>{{ group }}</h3>
-            <div class="grid">
+        <h2>👕 T-Shirts</h2>
+        <div class="grid">
+            {% for group in ['Men', 'Women', 'Kids'] %}
+            <div style="width:100%;text-align:left;"><h3>{{ group }}</h3></div>
                 {% for color in ['White', 'Black'] %}
-                    <div class="product">
-                        <img src="/static/{{ color | lower }}_shirt.jpg" alt="{{ color }} Shirt">
-                        <p><strong>{{ color }} T-Shirt</strong></p>
-                        <label>Size:</label>
-                        <select>
-                            {% for size in ['XS','S','M','L','XL'] %}
-                                <option>{{ size }}</option>
-                            {% endfor %}
-                        </select>
-                        <div class="qty">
-                            <button onclick="subQty('{{ group }}{{ color }}')">−</button>
-                            <span id="{{ group }}{{ color }}">0</span>
-                            <button onclick="addQty('{{ group }}{{ color }}')">+</button>
-                        </div>
-                        <button onclick="addToCart('{{ group }}{{ color }}')">Add to Cart</button>
-                    </div>
+                <div class="product">
+                    <img src="/static/{{ color | lower }}_shirt.jpg" />
+                    <p>{{ color }} T-Shirt</p>
+                    <label>Size:</label>
+                    <select id="size_{{group}}{{color}}">
+                        {% for s in ['XS','S','M','L','XL'] %}<option>{{s}}</option>{% endfor %}
+                    </select>
+                    <label>Qty:</label>
+                    <input type="number" id="qty_{{group}}{{color}}" value="1" min="1"/><br>
+                    <button onclick="addToCart('{{ color }} T-Shirt - {{ group }}', document.getElementById('qty_{{group}}{{color}}').value, document.getElementById('size_{{group}}{{color}}').value)">Add to Cart</button>
+                </div>
                 {% endfor %}
-            </div>
-        {% endfor %}
-        <div class="cart">
-            🛒 Cart: <span id="cartTotal">0</span> items
+            {% endfor %}
         </div>
-        <br><a href="/">⬅ Back</a>
+        <div id="cart"></div>
+        <br><a href="/">← Go Back</a>
     </body>
     </html>
-    """, codigo=codigo, ruta_img=ruta_img, ruta_postal=ruta_postal)
-
-@app.route('/nuevas_postales')
-def nuevas_postales():
-    if cola_postales:
-        return jsonify({"codigo": cola_postales[0]})
-    return jsonify({"codigo": None})
+    """, ruta_img=ruta_img, ruta_postal=ruta_postal)
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
     codigo = request.form.get("codigo")
     imagen = request.files.get("imagen")
     if not codigo or not imagen:
-        return "❌ Código o imagen faltante", 400
-    ruta = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    imagen.save(ruta)
+        return "Faltan datos", 400
+    path = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+    imagen.save(path)
     insertar_foto_en_postal(codigo)
     if codigo not in cola_postales:
         cola_postales.append(codigo)
-    return "✅ Imagen subida correctamente", 200
+    return "OK", 200
 
 @app.route('/galeria/cliente123/<archivo>')
 def servir_imagen(archivo):
@@ -250,8 +197,8 @@ def insertar_foto_en_postal(codigo):
         base.paste(foto, (90, 95))
         base.save(os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg"))
     except Exception as e:
-        print(f"Error generando postal para {codigo}: {e}")
+        print("❌ Error:", e)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)
