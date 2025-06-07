@@ -4,7 +4,6 @@ from flask import Flask, request, send_from_directory, jsonify, redirect, render
 from PIL import Image
 
 app = Flask(__name__)
-
 BASE = os.path.dirname(os.path.abspath(__file__))
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
@@ -96,7 +95,7 @@ def ver_imagen(codigo):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Cart</title>
+        <title>Shop</title>
         <style>
             body { font-family: Arial; margin: 0; padding: 20px; background: #f0f0f0; }
             .grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
@@ -111,27 +110,61 @@ def ver_imagen(codigo):
             img { max-width: 100%; border-radius: 8px; }
             select, input { margin-top: 8px; padding: 6px; border-radius: 4px; }
             button { margin-top: 8px; padding: 8px 16px; background: black; color: white; border: none; border-radius: 6px; }
-            #cart { margin-top: 30px; background: #fff; padding: 15px; border-radius: 10px; width: 80%; margin-left: auto; margin-right: auto; }
+            .sidebar {
+                position: fixed;
+                top: 0; right: -400px;
+                width: 350px; height: 100%;
+                background: white; box-shadow: -3px 0 6px rgba(0,0,0,0.2);
+                z-index: 999; overflow-y: auto; padding: 20px;
+                transition: right 0.3s ease-in-out;
+            }
+            .sidebar.active { right: 0; }
+            .sidebar-header {
+                display: flex; justify-content: space-between; font-weight: bold;
+            }
+            .cart-button {
+                position: fixed;
+                top: 20px; right: 20px;
+                background: #000; color: white;
+                padding: 12px 18px; border: none;
+                z-index: 1000;
+            }
         </style>
         <script>
             let cart = [];
 
             function addToCart(name, qty, size) {
-                cart.push({ name, qty, size });
+                cart.push({ name, qty: parseInt(qty), size });
                 renderCart();
             }
 
             function renderCart() {
                 let html = "<h3>🛒 Your Cart</h3><ul>";
+                let total = 0;
                 cart.forEach(item => {
                     html += `<li>${item.qty} × ${item.name} [${item.size}]</li>`;
+                    total += item.qty;
                 });
-                html += "</ul><p><button>Pay with Stripe</button> <button>Pay with PayPal</button></p>";
-                document.getElementById("cart").innerHTML = html;
+                html += "</ul><p>Total Items: " + total + "</p>";
+                html += "<button style='background:#635BFF;'>Pay with Stripe</button> ";
+                html += "<button style='background:#FFC439;color:black;'>Pay with PayPal</button>";
+                document.getElementById("sidebarContent").innerHTML = html;
+            }
+
+            function toggleSidebar() {
+                document.getElementById("sidebar").classList.toggle("active");
             }
         </script>
     </head>
     <body>
+        <button class="cart-button" onclick="toggleSidebar()">🛒 Cart</button>
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <span>Your Cart</span>
+                <button onclick="toggleSidebar()">✖</button>
+            </div>
+            <div id="sidebarContent"></div>
+        </div>
         <h2>📸 Your Photo & Postcard</h2>
         <div class="grid">
             <div class="product">
@@ -147,27 +180,6 @@ def ver_imagen(codigo):
                 <button onclick="addToCart('Postcard', document.getElementById('qty2').value, '-')">Add to Cart</button>
             </div>
         </div>
-        <h2>👕 T-Shirts</h2>
-        <div class="grid">
-            {% for group in ['Men', 'Women', 'Kids'] %}
-            <div style="width:100%;text-align:left;"><h3>{{ group }}</h3></div>
-                {% for color in ['White', 'Black'] %}
-                <div class="product">
-                    <img src="/static/{{ color | lower }}_shirt.jpg" />
-                    <p>{{ color }} T-Shirt</p>
-                    <label>Size:</label>
-                    <select id="size_{{group}}{{color}}">
-                        {% for s in ['XS','S','M','L','XL'] %}<option>{{s}}</option>{% endfor %}
-                    </select>
-                    <label>Qty:</label>
-                    <input type="number" id="qty_{{group}}{{color}}" value="1" min="1"/><br>
-                    <button onclick="addToCart('{{ color }} T-Shirt - {{ group }}', document.getElementById('qty_{{group}}{{color}}').value, document.getElementById('size_{{group}}{{color}}').value)">Add to Cart</button>
-                </div>
-                {% endfor %}
-            {% endfor %}
-        </div>
-        <div id="cart"></div>
-        <br><a href="/">← Go Back</a>
     </body>
     </html>
     """, ruta_img=ruta_img, ruta_postal=ruta_postal)
