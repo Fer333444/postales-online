@@ -21,50 +21,46 @@ def index():
         <title>Postcard Search</title>
         <style>
             html, body {
-                margin: 0;
-                padding: 0;
+                margin: 0; padding: 0;
                 height: 100vh;
-                overflow: hidden;
                 font-family: Arial, sans-serif;
+                overflow: hidden;
             }
             video#bgVideo {
                 position: fixed;
-                right: 0;
-                bottom: 0;
-                min-width: 100%;
-                min-height: 100%;
+                right: 0; bottom: 0;
+                min-width: 100%; min-height: 100%;
                 object-fit: cover;
                 z-index: -1;
             }
             .title-overlay {
                 position: absolute;
-                top: 20px;
-                left: 20px;
+                top: 20px; left: 20px;
                 font-size: 28px;
+                background: rgba(0,0,0,0.4);
                 color: white;
-                background: rgba(0,0,0,0.3);
                 padding: 8px 15px;
                 border-radius: 8px;
-                font-weight: bold;
             }
             .contenedor {
-                background: rgba(255, 255, 255, 0.6);
+                background: rgba(255,255,255,0.6);
+                backdrop-filter: blur(5px);
+                max-width: 400px;
+                margin: 20vh auto;
                 padding: 30px;
                 border-radius: 10px;
                 text-align: center;
-                max-width: 400px;
-                margin: 20vh auto 0;
-                backdrop-filter: blur(8px);
             }
             input[type="text"], button {
+                width: 100%;
                 padding: 12px;
+                margin-top: 10px;
                 font-size: 18px;
                 border-radius: 6px;
                 border: none;
-                margin: 5px;
             }
             button {
-                background-color: #000;
+                background: #000;
                 color: white;
                 cursor: pointer;
             }
@@ -78,7 +74,7 @@ def index():
         <div class="contenedor">
             <h1>🔍 Search your Postcard</h1>
             <form action="/search" method="get">
-                <input type="text" name="codigo" placeholder="Ex: 7fb1d2ae" required>
+                <input type="text" name="codigo" placeholder="Ex: 7fb1d2ae" required />
                 <button type="submit">Search</button>
             </form>
         </div>
@@ -101,53 +97,57 @@ def ver_imagen(codigo):
     <head>
         <title>Postcard {{codigo}}</title>
         <style>
-            body {
-                font-family: Arial;
-                background: #f8f9fa;
-                margin: 0;
-                padding: 40px;
-                text-align: center;
+            body { font-family: Arial; background: #f8f9fa; margin: 0; padding: 20px; text-align: center; }
+            .grid { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+            .item, .product {
+                background: white;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                width: 260px;
+                position: relative;
             }
-            .grid {
+            .item img, .product img {
+                width: 100%;
+                border-radius: 6px;
+            }
+            .qty {
                 display: flex;
                 justify-content: center;
-                gap: 30px;
-                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px;
+                margin: 10px 0;
             }
-            .item {
+            .qty button {
+                padding: 6px 12px;
+                font-size: 16px;
+                cursor: pointer;
+            }
+            .qty span {
+                font-size: 16px;
+                width: 30px;
+                display: inline-block;
+            }
+            .cart {
+                position: fixed;
+                top: 20px;
+                right: 20px;
                 background: white;
                 padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                width: 250px;
-            }
-            img {
-                max-width: 100%;
-                border-radius: 6px;
-                margin-bottom: 10px;
-            }
-            .shop-grid {
-                margin-top: 40px;
-                display: flex;
-                flex-direction: column;
-                gap: 30px;
-            }
-            .category h3 {
-                text-align: left;
-                margin-left: 10px;
-            }
-            .items {
-                display: flex;
-                gap: 20px;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            .item select, .item button {
-                width: 100%;
-                padding: 8px;
-                margin-top: 8px;
+                border-radius: 10px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.2);
             }
         </style>
+        <script>
+            function addQty(id) {
+                let el = document.getElementById(id);
+                el.innerText = parseInt(el.innerText) + 1;
+            }
+            function subQty(id) {
+                let el = document.getElementById(id);
+                if (parseInt(el.innerText) > 0) el.innerText = parseInt(el.innerText) - 1;
+            }
+        </script>
     </head>
     <body>
         <h2>🖼️ Your Photo & Postcard</h2>
@@ -155,39 +155,50 @@ def ver_imagen(codigo):
             <div class="item">
                 <img src="{{ ruta_img }}" alt="Original">
                 <p><strong>Original Photo</strong></p>
-                <button>Buy with Stripe</button>
-                <button>Buy with PayPal</button>
+                <div class="qty">
+                    <button onclick="subQty('qty1')">−</button>
+                    <span id="qty1">0</span>
+                    <button onclick="addQty('qty1')">+</button>
+                </div>
+                <button>Add to Cart</button>
             </div>
             <div class="item">
                 <img src="{{ ruta_postal }}" alt="Postcard">
                 <p><strong>Postcard</strong></p>
-                <button>Buy with Stripe</button>
-                <button>Buy with PayPal</button>
+                <div class="qty">
+                    <button onclick="subQty('qty2')">−</button>
+                    <span id="qty2">0</span>
+                    <button onclick="addQty('qty2')">+</button>
+                </div>
+                <button>Add to Cart</button>
             </div>
         </div>
 
-        <h2>🛍️ T-Shirt Shop</h2>
-        <div class="shop-grid">
-        {% for group in ['Men', 'Women', 'Boys', 'Girls'] %}
-            <div class="category">
-                <h3>{{ group }}</h3>
-                <div class="items">
-                    {% for color in ['White', 'Black'] %}
-                        <div class="item">
-                            <img src="/static/{{ color | lower }}_shirt.jpg" alt="{{ color }} Shirt">
-                            <p><strong>{{ color }} T-Shirt</strong></p>
-                            <label>Size:</label>
-                            <select>
-                                {% for size in ['XS', 'S', 'M', 'L', 'XL'] %}
-                                    <option>{{ size }}</option>
-                                {% endfor %}
-                            </select>
-                            <button>Buy Now</button>
+        <h2>👕 T-Shirts</h2>
+        <div class="grid">
+            {% for group in ['Men', 'Women', 'Boys', 'Girls'] %}
+                {% for color in ['White', 'Black'] %}
+                    <div class="product">
+                        <img src="/static/{{ color | lower }}_shirt.jpg" alt="{{ color }} Shirt">
+                        <p><strong>{{ color }} T-Shirt ({{ group }})</strong></p>
+                        <select>
+                            {% for size in ['XS','S','M','L','XL'] %}
+                                <option>{{ size }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="qty">
+                            <button onclick="subQty('{{ group }}{{ color }}')">−</button>
+                            <span id="{{ group }}{{ color }}">0</span>
+                            <button onclick="addQty('{{ group }}{{ color }}')">+</button>
                         </div>
-                    {% endfor %}
-                </div>
-            </div>
-        {% endfor %}
+                        <button>Add to Cart</button>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div class="cart">
+            🛒 Cart (visual only)<br>Items: <span id="cartTotal">--</span><br><em>(integration coming soon)</em>
         </div>
         <br><a href="/">⬅ Back</a>
     </body>
