@@ -135,6 +135,12 @@ def subir_postal():
     if codigo not in cola_postales:
         cola_postales.append(codigo)
     return "✅ Imagen subida correctamente", 200
+@app.route('/nuevas_postales')
+def nuevas_postales():
+    if cola_postales:
+        codigo = cola_postales.pop(0)
+        return jsonify({"codigo": codigo})
+    return jsonify({"codigo": None})
 
 @app.route('/galeria/cliente123/<archivo>')
 def servir_imagen(archivo):
