@@ -92,8 +92,35 @@ def buscar():
 def ver_imagen(codigo):
     ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
     ruta_postal = f"/galeria/cliente123/postal_{codigo}.jpg"
-    return render_template_string("...código HTML omitido aquí por brevedad...", ruta_img=ruta_img, ruta_postal=ruta_postal)
+    path_img = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+    path_postal = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
 
+    imagen_existe = os.path.exists(path_img)
+    postal_existe = os.path.exists(path_postal)
+
+    return render_template_string(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Postcard {codigo}</title>
+        <style>
+            body {{ font-family: Arial; background: #f4f4f4; padding: 40px; text-align: center; }}
+            img {{ max-width: 400px; margin: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.2); }}
+            .error {{ color: red; font-weight: bold; }}
+            .back {{ margin-top: 30px; display: inline-block; padding: 10px 20px; background: #007bff; color: white; border-radius: 6px; text-decoration: none; }}
+        </style>
+    </head>
+    <body>
+        <h2>📸 Your Postcard & Original</h2>
+
+        {"<img src='" + ruta_img + "' alt='Original Photo'>" if imagen_existe else "<p class='error'>❌ Original photo not found.</p>"}
+        {"<img src='" + ruta_postal + "' alt='Postcard'>" if postal_existe else "<p class='error'>❌ Postcard not generated yet.</p>"}
+
+        <br>
+        <a class="back" href="/">← Back</a>
+    </body>
+    </html>
+    """)
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
     codigo = request.form.get("codigo")
