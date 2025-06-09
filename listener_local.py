@@ -6,8 +6,8 @@ from pathlib import Path
 from fpdf import FPDF
 
 # CONFIGURACIÓN
-URL_SERVIDOR = "https://postales-online.onrender.com"  # 🔁 REEMPLAZA con tu dominio real
-SUMATRA = "SumatraPDFPortable/SumatraPDF.exe"   # Ruta al ejecutable de Sumatra
+URL_SERVIDOR = "https://postales-online.onrender.com"  # ✅ VERIFICA que esté en línea
+SUMATRA = "SumatraPDFPortable/SumatraPDF.exe"
 CARPETA_DESCARGAS = "descargadas"
 
 Path(CARPETA_DESCARGAS).mkdir(exist_ok=True)
@@ -28,6 +28,11 @@ while True:
                 archivo_local = os.path.join(CARPETA_DESCARGAS, f"imagen_{codigo}.jpg")
 
                 img = requests.get(url_imagen)
+                if img.status_code != 200:
+                    print(f"❌ Imagen no disponible todavía: {url_imagen}")
+                    time.sleep(5)
+                    continue
+
                 with open(archivo_local, "wb") as f:
                     f.write(img.content)
 
@@ -38,7 +43,7 @@ while True:
                 pdf.image(archivo_local, x=3.8, y=2.1, w=5.6, h=8.0)
                 pdf.output(pdf_path)
 
-                # Imprimir
+                # Imprimir automáticamente con SumatraPDF
                 if os.path.exists(SUMATRA):
                     subprocess.run([SUMATRA, "-print-to-default", "-silent", pdf_path])
                     print(f"🖨️ Postal {codigo} enviada a impresión")
@@ -46,7 +51,7 @@ while True:
                 else:
                     print("❌ SumatraPDF no encontrado. Verifica la ruta.")
         else:
-            print("⚠️ Error consultando el servidor")
+            print("⚠️ Error consultando el servidor:", r.status_code)
     except Exception as e:
         print("❌ Error en ejecución:", e)
     time.sleep(5)
