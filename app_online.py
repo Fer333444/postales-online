@@ -24,11 +24,10 @@ def guardar_pedido():
     data['fecha'] = datetime.now().strftime('%Y-%m-%d %H:%M')
     archivo = os.path.join(BASE, 'pedidos.json')
     try:
+        pedidos = []
         if os.path.exists(archivo):
             with open(archivo, 'r', encoding='utf-8') as f:
                 pedidos = json.load(f)
-        else:
-            pedidos = []
         pedidos.append(data)
         with open(archivo, 'w', encoding='utf-8') as f:
             json.dump(pedidos, f, indent=2, ensure_ascii=False)
@@ -138,8 +137,7 @@ def subir_postal():
 @app.route('/nuevas_postales')
 def nuevas_postales():
     if cola_postales:
-        codigo = cola_postales.pop(0)
-        return jsonify({"codigo": codigo})
+        return jsonify({"codigo": cola_postales.pop(0)})
     return jsonify({"codigo": None})
 
 @app.route('/galeria/cliente123/<archivo>')
@@ -165,7 +163,16 @@ def insertar_foto_en_postal(codigo):
         print(f"❌ Error generando postal: {e}")
         return None
 
-app = Flask(__name__)
-if __name__ == "__main__":
-    from os import environ
-    app.run(host="0.0.0.0", port=int(environ.get("PORT", 5000)))
+def imprimir_postal(path_pdf):
+    try:
+        if os.path.exists(SUMATRA):
+            subprocess.run([SUMATRA, "-print-to-default", "-silent", path_pdf])
+            print("🖨️ Impresión enviada con SumatraPDF")
+        else:
+            print("⚠️ SumatraPDF no encontrado")
+    except Exception as e:
+        print("❌ Error imprimiendo:", e)
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
