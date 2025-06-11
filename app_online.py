@@ -37,7 +37,7 @@ def guardar_pedido():
 
 @app.route('/')
 def index():
-    return render_template_string("""
+    return render_template("index.html")
     <!DOCTYPE html>
     <html lang='en'>
     <head>
