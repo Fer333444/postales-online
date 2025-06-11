@@ -1,5 +1,7 @@
 import os
 import subprocess
+import json
+from datetime import datetime
 from flask import Flask, request, send_from_directory, jsonify, redirect, render_template_string
 from PIL import Image
 from fpdf import FPDF
@@ -14,12 +16,25 @@ cola_postales = []
 
 SUMATRA = os.path.join(BASE, "SumatraPDF.exe")
 
-def imprimir_postal(path_pdf):
+@app.route('/guardar_pedido', methods=['POST'])
+def guardar_pedido():
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "No se recibieron datos"}), 400
+    data['fecha'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+    archivo = os.path.join(BASE, 'pedidos.json')
     try:
-        if os.path.exists(SUMATRA):
-            subprocess.run([SUMATRA, '-print-to-default', '-silent', path_pdf])
+        if os.path.exists(archivo):
+            with open(archivo, 'r', encoding='utf-8') as f:
+                pedidos = json.load(f)
+        else:
+            pedidos = []
+        pedidos.append(data)
+        with open(archivo, 'w', encoding='utf-8') as f:
+            json.dump(pedidos, f, indent=2, ensure_ascii=False)
+        return jsonify({"status": "ok", "message": "Pedido guardado"})
     except Exception as e:
-        print("❌ Error imprimiendo:", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/')
 def index():
@@ -98,7 +113,12 @@ def ver_imagen(codigo):
     imagen_existe = os.path.exists(path_img)
     postal_existe = os.path.exists(path_postal)
 
-    return render_template_string(open("plantilla_view_image.html", encoding="utf-8").read(), codigo=codigo, ruta_img=ruta_img, ruta_postal=ruta_postal, imagen_existe=imagen_existe, postal_existe=postal_existe)
+    return render_template_string(open("plantilla_postal_tienda.html", encoding="utf-8").read(),
+        codigo=codigo,
+        ruta_img=ruta_img,
+        ruta_postal=ruta_postal,
+        imagen_existe=imagen_existe,
+        postal_existe=postal_existe)
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
@@ -144,11 +164,6 @@ def insertar_foto_en_postal(codigo):
     except Exception as e:
         print(f"❌ Error generando postal: {e}")
         return None
-from flask import render_template
-
-@app.route('/tienda')
-def tienda():
-    return render_template("tienda.html")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
