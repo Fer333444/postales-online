@@ -2,7 +2,7 @@ import os
 import subprocess
 import json
 from datetime import datetime
-from flask import Flask, request, send_from_directory, jsonify, redirect, render_template_string
+from flask import Flask, request, send_from_directory, jsonify, redirect, render_template
 from PIL import Image
 from fpdf import FPDF
 
@@ -112,12 +112,12 @@ def ver_imagen(codigo):
     imagen_existe = os.path.exists(path_img)
     postal_existe = os.path.exists(path_postal)
 
-    return render_template_string(open("plantilla_postal_tienda.html", encoding="utf-8").read(),
-        codigo=codigo,
-        ruta_img=ruta_img,
-        ruta_postal=ruta_postal,
-        imagen_existe=imagen_existe,
-        postal_existe=postal_existe)
+    return render_template("plantilla_postal_tienda.html",
+    codigo=codigo,
+    ruta_img=ruta_img,
+    ruta_postal=ruta_postal,
+    imagen_existe=imagen_existe,
+    postal_existe=postal_existe)
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
