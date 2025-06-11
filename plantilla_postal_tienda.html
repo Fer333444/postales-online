@@ -1,155 +1,110 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tienda por Categoría</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreatiPost | Vista Postal + Tienda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://kit.fontawesome.com/a2e8b6b76b.js" crossorigin="anonymous"></script>
+    <style>
+        .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .carrito-flotante { position: fixed; top: 20px; right: 20px; background: white; border-radius: 0.5rem; box-shadow: 0 5px 15px rgba(0,0,0,0.2); padding: 1rem; width: 300px; z-index: 999; display: none; }
+        .carrito-flotante.visible { display: block; }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
-  <div class="container mx-auto px-4 py-6">
-    <h1 class="text-3xl font-bold text-center mb-6">📸 Postal + Tienda</h1>
-    <div class="flex flex-wrap justify-center gap-6 mb-10">
-      {% if imagen_existe %}
-      <div class="text-center">
-        <h2 class="text-lg font-semibold mb-2">📷 Foto original</h2>
-        <img src="{{ ruta_img }}" class="max-w-xs rounded shadow border" />
-      </div>
-      {% endif %}
-      {% if postal_existe %}
-      <div class="text-center">
-        <h2 class="text-lg font-semibold mb-2">📬 Postal generada</h2>
-        <img src="{{ ruta_postal }}" class="max-w-xs rounded shadow border" />
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Postal -->
-    <div class="flex flex-wrap justify-center gap-6 mb-12">
-      {% if imagen_existe %}
-      <div><img src="{{ ruta_img }}" class="max-w-xs rounded shadow border" /></div>
-      {% endif %}
-      {% if postal_existe %}
-      <div><img src="{{ ruta_postal }}" class="max-w-xs rounded shadow border" /></div>
-      {% endif %}
-    </div>
-
-    <!-- Secciones por categoría -->
-    {% set categorias = {
-      "👕 Hombre": [
-        {"name": "Camiseta Blanca Hombre", "price": 19.99, "img": "/static/camiseta_hombre_blanca.jpg"}
-      ],
-      "👚 Mujer": [
-        {"name": "Camiseta Negra Mujer", "price": 19.99, "img": "/static/camiseta_mujer_negra.jpg"}
-      ],
-      "🧒 Niño": [
-        {"name": "Camiseta Blanca Niño", "price": 14.99, "img": "/static/camiseta_nino_blanca.jpg"}
-      ],
-      "👧 Niña": [
-        {"name": "Camiseta Rosa Niña", "price": 14.99, "img": "/static/camiseta_nina_rosa.jpg"}
-      ]
-    } %}
-
-    {% for seccion, productos in categorias.items() %}
-    <h2 class="text-2xl font-semibold mb-4 mt-10">{{ seccion }}</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-      {% for producto in productos %}
-      <div class="bg-white p-4 rounded shadow text-center">
-        <img src="{{ producto.img }}" class="mb-3 rounded mx-auto h-48 object-cover" />
-        <h3 class="font-semibold">{{ producto.name }}</h3>
-        <p class="text-sm text-gray-600 mt-1">Con tu postal personalizada</p>
-        <p class="mt-2 font-bold text-blue-700">${{ producto.price }}</p>
-        <button onclick="addToCart('{{ producto.name }}', {{ producto.price }})"
-                class="mt-3 bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded w-full">
-          Añadir al carrito
-        </button>
-      </div>
-      {% endfor %}
-    </div>
-    {% endfor %}
-  </div>
-
-  <!-- Botón y panel de carrito -->
-  <button onclick="toggleCart()" class="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded shadow z-50">🛒 Carrito</button>
-  <div id="cart-panel" class="fixed top-0 right-0 w-80 bg-white shadow-lg h-full transform translate-x-full transition-transform duration-300 z-40 p-6 overflow-y-auto">
-    <h2 class="text-xl font-bold mb-4">🛍️ Tu carrito</h2>
-    <div id="cart-items" class="mb-4 space-y-2"></div>
-    <div class="font-semibold text-lg">Total: $<span id="cart-total">0.00</span></div>
-    <button onclick="finalizarCompra()" class="mt-4 w-full bg-green-600 hover:bg-green-800 text-white py-2 rounded">Finalizar compra</button>
-    <button onclick="toggleCart()" class="mt-2 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 rounded">Cerrar</button>
-  </div>
-
-<script>
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-function saveCart() {
-  localStorage.setItem('cart', JSON.stringify(cart));
-  updateCart();
-}
-
-function updateCart() {
-  const panel = document.getElementById('cart-items');
-  const totalSpan = document.getElementById('cart-total');
-  panel.innerHTML = '';
-  let total = 0;
-  cart.forEach((item, i) => {
-    total += item.price * item.qty;
-    panel.innerHTML += `
-      <div class="flex justify-between items-center border-b pb-2">
-        <div>
-          <strong>${item.name}</strong><br>
-          <small>$${item.price.toFixed(2)} x ${item.qty}</small>
+<body class="bg-gray-50 font-sans">
+    <div class="container mx-auto px-4 py-6">
+        <h1 class="text-3xl font-bold text-center mb-6">Tu Postal Generada</h1>
+        <div class="flex justify-center mb-10">
+            <img src="/static/uploads/{{ codigo }}.jpg" alt="Postal original" class="rounded shadow-md max-h-96">
         </div>
-        <button onclick="removeFromCart(${i})" class="text-red-500">🗑️</button>
-      </div>`;
-  });
-  totalSpan.textContent = total.toFixed(2);
-}
 
-function addToCart(name, price) {
-  const existing = cart.find(item => item.name === name);
-  if (existing) {
-    existing.qty += 1;
-  } else {
-    cart.push({ name, price, qty: 1 });
-  }
-  saveCart();
-}
+        <h2 class="text-2xl font-semibold mb-4">Camisetas con tu imagen</h2>
+        {% for categoria, productos in previews.items() %}
+            <h3 class="text-xl mt-8 mb-2 capitalize">{{ categoria }}</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {% for p in productos %}
+                    <div class="bg-white rounded-lg p-4 shadow-md card-hover">
+                        <img src="/{{ p.imagen }}" alt="{{ p.nombre }}" class="w-full h-48 object-cover mb-2">
+                        <h4 class="font-semibold">{{ p.nombre }}</h4>
+                        <p class="text-gray-600 mb-1">Precio: ${{ p.precio }}</p>
+                        <input type="number" id="qty_{{ p.id }}" min="1" value="1" class="w-16 border px-2 py-1 rounded mr-2">
+                        <button onclick="addToCart('{{ p.id }}', '{{ p.nombre }}', {{ p.precio }})" class="bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700">
+                            Añadir al carrito
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
 
-function removeFromCart(index) {
-  cart.splice(index, 1);
-  saveCart();
-}
+    <!-- Carrito flotante -->
+    <div id="carrito" class="carrito-flotante">
+        <h3 class="text-lg font-bold mb-2">Carrito</h3>
+        <ul id="carrito-items" class="mb-2 text-sm"></ul>
+        <p class="font-semibold">Total: $<span id="total">0.00</span></p>
+        <button onclick="finalizarCompra()" class="mt-3 w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Finalizar compra</button>
+    </div>
 
-function toggleCart() {
-  document.getElementById('cart-panel').classList.toggle('translate-x-full');
-}
+    <!-- Botón carrito flotante -->
+    <button onclick="toggleCarrito()" class="fixed top-5 right-5 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg z-50">
+        <i class="fas fa-shopping-cart"></i>
+    </button>
 
-function finalizarCompra() {
-  if (cart.length === 0) {
-    alert('Carrito vacío.');
-    return;
-  }
-  const total = cart.reduce((acc, i) => acc + i.price * i.qty, 0);
-  fetch('/guardar_pedido', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productos: cart, total: parseFloat(total.toFixed(2)) })
-  }).then(res => res.json())
-    .then(data => {
-      if (data.status === 'ok') {
-        alert('✅ Pedido guardado');
-        cart = [];
-        localStorage.removeItem('cart');
-        updateCart();
-      } else {
-        alert('❌ Error al guardar el pedido');
-      }
-    });
-}
+    <script>
+        let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
 
-window.onload = updateCart;
-</script>
+        function toggleCarrito() {
+            document.getElementById('carrito').classList.toggle('visible');
+            renderizarCarrito();
+        }
+
+        function addToCart(id, nombre, precio) {
+            const cantidad = parseInt(document.getElementById(`qty_${id}`).value);
+            const existente = carrito.find(p => p.id === id);
+            if (existente) {
+                existente.cantidad += cantidad;
+            } else {
+                carrito.push({ id, nombre, precio, cantidad });
+            }
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            renderizarCarrito();
+        }
+
+        function renderizarCarrito() {
+            const lista = document.getElementById('carrito-items');
+            lista.innerHTML = '';
+            let total = 0;
+            carrito.forEach((p, i) => {
+                total += p.precio * p.cantidad;
+                lista.innerHTML += `<li>${p.nombre} x${p.cantidad} - $${(p.precio * p.cantidad).toFixed(2)} <button onclick="eliminar(${i})" class='text-red-500 ml-2'>&times;</button></li>`;
+            });
+            document.getElementById('total').innerText = total.toFixed(2);
+        }
+
+        function eliminar(i) {
+            carrito.splice(i, 1);
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            renderizarCarrito();
+        }
+
+        function finalizarCompra() {
+            fetch('/guardar_pedido', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ carrito, timestamp: new Date().toISOString() })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.mensaje || data.message);
+                carrito = [];
+                localStorage.removeItem('carrito');
+                renderizarCarrito();
+            });
+        }
+
+        renderizarCarrito();
+    </script>
 </body>
 </html>
