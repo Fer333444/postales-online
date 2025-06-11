@@ -144,6 +144,11 @@ def insertar_foto_en_postal(codigo):
     except Exception as e:
         print(f"❌ Error generando postal: {e}")
         return None
+from flask import render_template
+
+@app.route('/tienda')
+def tienda():
+    return render_template("tienda.html")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
