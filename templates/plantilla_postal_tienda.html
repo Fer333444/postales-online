@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Postales y Camisetas</title>
+</head>
+<body>
+    <h1>Vista de Productos y Postal</h1>
+    <p>Código de postal: {{ codigo }}</p>
+
+    {% if imagen_existe %}
+        <img src="{{ ruta_img }}" alt="Imagen subida" width="300">
+    {% endif %}
+
+    {% if postal_existe %}
+        <img src="{{ ruta_postal }}" alt="Postal generada" width="300">
+    {% endif %}
+
+    <h2>Productos disponibles</h2>
+    {% for categoria, productos in previews.items() %}
+        <h3>{{ categoria|capitalize }}</h3>
+        <ul>
+        {% for p in productos %}
+            <li>
+                <img src="/{{ p.imagen }}" width="100"><br>
+                {{ p.nombre }} - ${{ p.precio }}
+            </li>
+        {% endfor %}
+        </ul>
+    {% endfor %}
+
+    <!-- Archivo verificado para Render -->
+</body>
+</html>
