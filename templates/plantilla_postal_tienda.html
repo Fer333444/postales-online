@@ -10,6 +10,20 @@
 <body class="bg-gray-50 text-gray-800">
   <div class="container mx-auto px-4 py-6">
     <h1 class="text-3xl font-bold text-center mb-6">📸 Postal + Tienda</h1>
+    <div class="flex flex-wrap justify-center gap-6 mb-10">
+      {% if imagen_existe %}
+      <div class="text-center">
+        <h2 class="text-lg font-semibold mb-2">📷 Foto original</h2>
+        <img src="{{ ruta_img }}" class="max-w-xs rounded shadow border" />
+      </div>
+      {% endif %}
+      {% if postal_existe %}
+      <div class="text-center">
+        <h2 class="text-lg font-semibold mb-2">📬 Postal generada</h2>
+        <img src="{{ ruta_postal }}" class="max-w-xs rounded shadow border" />
+      </div>
+      {% endif %}
+    </div>
 
     <!-- Postal -->
     <div class="flex flex-wrap justify-center gap-6 mb-12">
