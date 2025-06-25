@@ -1,4 +1,4 @@
-# app_online.py combinado con Cloudinary para Render y Sumatra local
+# app_online.py actualizado con diseño visual completo en / usando Cloudinary y SumatraPDF
 
 import os
 import subprocess
@@ -21,7 +21,6 @@ app = Flask(__name__)
 BASE = os.path.dirname(os.path.abspath(__file__))
 URLS_FILE = os.path.join(BASE, "urls_cloudinary.json")
 SUMATRA = os.path.join(BASE, "SumatraPDF.exe")
-
 cola_postales = []
 urls_cloudinary = {}
 
@@ -32,12 +31,64 @@ if os.path.exists(URLS_FILE):
 @app.route('/')
 def index():
     return render_template_string("""
-    <h2>Subir postal</h2>
-    <form action="/subir_postal" method="post" enctype="multipart/form-data">
-        Código: <input type="text" name="codigo" required><br><br>
-        Imagen: <input type="file" name="imagen" accept="image/*" required><br><br>
-        <button type="submit">Subir</button>
-    </form>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Postcard Search</title>
+        <style>
+            html, body {
+                margin: 0; padding: 0;
+                height: 100vh;
+                overflow: hidden;
+                font-family: Arial, sans-serif;
+            }
+            video#bgVideo {
+                position: fixed;
+                top: 0; left: 0;
+                min-width: 100%; min-height: 100%;
+                object-fit: cover;
+                z-index: -1;
+            }
+            .contenedor {
+                background-color: rgba(255,255,255,0.8);
+                padding: 30px;
+                border-radius: 12px;
+                text-align: center;
+                width: 90%;
+                max-width: 400px;
+                margin: 20vh auto;
+            }
+            input, button {
+                width: 100%;
+                padding: 12px;
+                font-size: 18px;
+                margin-top: 10px;
+                border: none;
+                border-radius: 6px;
+            }
+            button {
+                background: black;
+                color: white;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <video autoplay muted loop id="bgVideo">
+            <source src="/static/douro_sunset.mp4" type="video/mp4">
+        </video>
+        <div class="contenedor">
+            <h2>📩 Subir tu postal personalizada</h2>
+            <form action="/subir_postal" method="post" enctype="multipart/form-data">
+                <input type="text" name="codigo" placeholder="Código único" required />
+                <input type="file" name="imagen" accept="image/*" required />
+                <button type="submit">Subir</button>
+            </form>
+        </div>
+    </body>
+    </html>
     """)
 
 def imprimir_postal(path_pdf):
