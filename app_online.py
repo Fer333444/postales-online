@@ -7,19 +7,43 @@ from fpdf import FPDF
 app = Flask(__name__)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+
+# Carpetas
 CARPETA_GALERIAS = os.path.join(BASE, "galerias")
 CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
-os.makedirs(CARPETA_CLIENTE, exist_ok=True)
-cola_postales = []
+CARPETA_PREVIEWS = os.path.join(BASE, "previews_camisetas", "cliente123")
 
+# Crear carpetas si no existen
+os.makedirs(CARPETA_CLIENTE, exist_ok=True)
+os.makedirs(CARPETA_PREVIEWS, exist_ok=True)
+
+cola_postales = []
 SUMATRA = os.path.join(BASE, "SumatraPDF.exe")
 
+# Función para imprimir
 def imprimir_postal(path_pdf):
     try:
         if os.path.exists(SUMATRA):
             subprocess.run([SUMATRA, '-print-to-default', '-silent', path_pdf])
     except Exception as e:
         print("❌ Error imprimiendo:", e)
+
+# Generar camisetas personalizadas
+def generar_camisetas(codigo):
+    try:
+        path_foto = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
+        foto = Image.open(path_foto).resize((200, 200)).convert("RGBA")
+
+        modelos = ["camiseta_blanca", "camiseta_negra"]
+        for modelo in modelos:
+            path_plantilla = os.path.join(BASE, "static", "plantillas_camiseta", f"{modelo}.png")
+            if os.path.exists(path_plantilla):
+                base = Image.open(path_plantilla).convert("RGBA")
+                base.paste(foto, (150, 250), foto)
+                salida = os.path.join(CARPETA_PREVIEWS, f"{modelo}_{codigo}.png")
+                base.save(salida)
+    except Exception as e:
+        print("❌ Error generando camisetas:", e)
 
 @app.route('/')
 def index():
@@ -31,41 +55,11 @@ def index():
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>Postcard Search</title>
         <style>
-            html, body {
-                margin: 0; padding: 0;
-                height: 100vh;
-                overflow: hidden;
-                font-family: Arial, sans-serif;
-            }
-            video#bgVideo {
-                position: fixed;
-                top: 0; left: 0;
-                min-width: 100%; min-height: 100%;
-                object-fit: cover;
-                z-index: -1;
-            }
-            .contenedor {
-                background-color: rgba(255,255,255,0.8);
-                padding: 30px;
-                border-radius: 12px;
-                text-align: center;
-                width: 90%;
-                max-width: 400px;
-                margin: 20vh auto;
-            }
-            input, button {
-                width: 100%;
-                padding: 12px;
-                font-size: 18px;
-                margin-top: 10px;
-                border: none;
-                border-radius: 6px;
-            }
-            button {
-                background: black;
-                color: white;
-                cursor: pointer;
-            }
+            html, body { margin: 0; padding: 0; height: 100vh; overflow: hidden; font-family: Arial, sans-serif; }
+            video#bgVideo { position: fixed; top: 0; left: 0; min-width: 100%; min-height: 100%; object-fit: cover; z-index: -1; }
+            .contenedor { background-color: rgba(255,255,255,0.8); padding: 30px; border-radius: 12px; text-align: center; width: 90%; max-width: 400px; margin: 20vh auto; }
+            input, button { width: 100%; padding: 12px; font-size: 18px; margin-top: 10px; border: none; border-radius: 6px; }
+            button { background: black; color: white; cursor: pointer; }
         </style>
     </head>
     <body>
@@ -98,6 +92,13 @@ def ver_imagen(codigo):
     imagen_existe = os.path.exists(path_img)
     postal_existe = os.path.exists(path_postal)
 
+    camisetas_html = ""
+    for modelo in ["camiseta_blanca", "camiseta_negra"]:
+        ruta_preview = f"/previews_camisetas/cliente123/{modelo}_{codigo}.png"
+        path_preview = os.path.join(CARPETA_PREVIEWS, f"{modelo}_{codigo}.png")
+        if os.path.exists(path_preview):
+            camisetas_html += f"<img src='{ruta_preview}' alt='{modelo}'><br>"
+
     return render_template_string(f"""
     <!DOCTYPE html>
     <html>
@@ -112,15 +113,17 @@ def ver_imagen(codigo):
     </head>
     <body>
         <h2>📸 Your Postcard & Original</h2>
-
         {"<img src='" + ruta_img + "' alt='Original Photo'>" if imagen_existe else "<p class='error'>❌ Original photo not found.</p>"}
         {"<img src='" + ruta_postal + "' alt='Postcard'>" if postal_existe else "<p class='error'>❌ Postcard not generated yet.</p>"}
-
+        <hr>
+        <h3>👕 Previews de camisetas</h3>
+        {camisetas_html}
         <br>
         <a class="back" href="/">← Back</a>
     </body>
     </html>
     """)
+
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
     codigo = request.form.get("codigo")
@@ -130,11 +133,15 @@ def subir_postal():
     ruta_img = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
     imagen.save(ruta_img)
     ruta_pdf = insertar_foto_en_postal(codigo)
+
+    generar_camisetas(codigo)
+
     if ruta_pdf and os.path.exists(ruta_pdf):
         imprimir_postal(ruta_pdf)
     if codigo not in cola_postales:
         cola_postales.append(codigo)
     return "✅ Imagen subida correctamente", 200
+
 @app.route('/nuevas_postales')
 def nuevas_postales():
     if cola_postales:
@@ -145,6 +152,10 @@ def nuevas_postales():
 @app.route('/galeria/cliente123/<archivo>')
 def servir_imagen(archivo):
     return send_from_directory(CARPETA_CLIENTE, archivo)
+
+@app.route('/previews_camisetas/cliente123/<archivo>')
+def servir_preview(archivo):
+    return send_from_directory(CARPETA_PREVIEWS, archivo)
 
 def insertar_foto_en_postal(codigo):
     try:
