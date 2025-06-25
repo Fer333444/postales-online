@@ -3,7 +3,7 @@
 import os
 import subprocess
 import json
-import threading	
+from threading import Thread	
 from flask import Flask, request, jsonify, redirect, render_template_string
 from PIL import Image, UnidentifiedImageError
 from fpdf import FPDF
@@ -100,15 +100,16 @@ def subir_postal():
 
     salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
 
-    # 🖨️ Imprimir primero
+    # 🖨️ Lanzar impresión en paralelo INMEDIATAMENTE
     if ruta_pdf and os.path.exists(ruta_pdf):
-        threading.Thread(target=imprimir_postal, args=(ruta_pdf,), daemon=True).start()
+        Thread(target=imprimir_postal, args=(ruta_pdf,), daemon=True).start()
 
     try:
-        # ☁️ Subir luego a Cloudinary
+        # ☁️ Subida a Cloudinary
         r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original")
         r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_postal")
 
+        # Guardar en JSON
         urls_cloudinary[codigo] = {
             "imagen": r1['secure_url'],
             "postal": r2['secure_url']
@@ -119,12 +120,12 @@ def subir_postal():
 
     except Exception as e:
         print("❌ Error subiendo a Cloudinary:", e)
-        return "Error en subida", 500  # ✅ Ahora está dentro del except correctamente
+        return "Error en subida", 500
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
-    return redirect(f"/view_image/{codigo}")
+    return redirect(f"/view_image/{codigo}"
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
