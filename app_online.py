@@ -98,8 +98,9 @@ def subir_postal():
 
     salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
 
+    # ✅ Imprimir en segundo plano mientras sube a Cloudinary
     if ruta_pdf and os.path.exists(ruta_pdf):
-        imprimir_postal(ruta_pdf)
+        threading.Thread(target=imprimir_postal, args=(ruta_pdf,), daemon=True).start()
 
     try:
         r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original")
@@ -119,6 +120,8 @@ def subir_postal():
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
+
+    return redirect(f"/view_image/{codigo}"
 
     return redirect(f"/view_image/{codigo}")
 @app.route('/view_image/<codigo>')
