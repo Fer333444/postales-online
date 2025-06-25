@@ -1,9 +1,7 @@
-# app_online.py actualizado con validación de imagen antes de subir a Cloudinary
-
 import os
 import subprocess
 import json
-from threading import Thread	
+import threading
 from flask import Flask, request, jsonify, redirect, render_template_string
 from PIL import Image, UnidentifiedImageError
 from fpdf import FPDF
@@ -47,7 +45,7 @@ def buscar():
 def imprimir_postal(path_pdf):
     try:
         if os.path.exists(SUMATRA):
-            subprocess.run([SUMATRA, '-print-t	o-default', '-silent', path_pdf])
+            subprocess.Popen([SUMATRA, '-print-to-default', '-silent', path_pdf])
             print("🖨️ Impresión enviada con SumatraPDF")
         else:
             print("⚠️ SumatraPDF.exe no encontrado")
@@ -65,7 +63,6 @@ def generar_postal_bytes(imagen_bytes, codigo):
         base.save(salida, format='JPEG')
         salida.seek(0)
 
-        pdf_bytes = BytesIO()
         pdf = FPDF(unit="cm", format="A4")
         pdf.add_page()
         temp_jpg = os.path.join(BASE, f"temp_{codigo}.jpg")
@@ -81,30 +78,7 @@ def generar_postal_bytes(imagen_bytes, codigo):
         print("❌ Error generando postal:", e)
         return None, None
 
-@app.route('/subir_postal', methods=['POST'])
-def subir_postal():
-    codigo = request.form.get("codigo")
-    archivo = request.files.get("imagen")
-    if not codigo or not archivo:
-        return "❌ Código o imagen faltante", 400
-
-    imagen_bytes = archivo.read()
-
-    # Validar imagen antes de continuar
-    try:
-        test_image = Image.open(BytesIO(imagen_bytes))
-        test_image.verify()
-    except UnidentifiedImageError:
-        print(f"❌ Imagen inválida o corrupta para código: {codigo}")
-        return "❌ Imagen inválida o corrupta", 502
-
-    salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
-
-    # 🖨️ Imprimir primero
-    if ruta_pdf and os.path.exists(ruta_pdf):
-        imprimir_postal(ruta_pdf)
-
-    # ☁️ Subir luego a Cloudinary
+def subir_a_cloudinary_en_background(imagen_bytes, salida_jpg, codigo):
     try:
         r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original")
         r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_postal")
@@ -116,15 +90,39 @@ def subir_postal():
 
         with open(URLS_FILE, "w") as f:
             json.dump(urls_cloudinary, f)
-
+        print(f"☁️ Subida completa para {codigo}")
     except Exception as e:
-        print("❌ Error subiendo a Cloudinary:", e)
-        return "Error en subida", 500
+        print("❌ Error subiendo en background:", e)
+
+@app.route('/subir_postal', methods=['POST'])
+def subir_postal():
+    codigo = request.form.get("codigo")
+    archivo = request.files.get("imagen")
+    if not codigo or not archivo:
+        return "❌ Código o imagen faltante", 400
+
+    imagen_bytes = archivo.read()
+
+    try:
+        test_image = Image.open(BytesIO(imagen_bytes))
+        test_image.verify()
+    except UnidentifiedImageError:
+        print(f"❌ Imagen inválida para {codigo}")
+        return "❌ Imagen inválida", 502
+
+    salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
+
+    if ruta_pdf and os.path.exists(ruta_pdf):
+        imprimir_postal(ruta_pdf)
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
+    # Subida paralela
+    threading.Thread(target=subir_a_cloudinary_en_background, args=(imagen_bytes, salida_jpg, codigo)).start()
+
     return redirect(f"/view_image/{codigo}")
+
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
