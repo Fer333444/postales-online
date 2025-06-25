@@ -58,27 +58,35 @@ def imprimir_postal_bytes(pdf_bytes, codigo):
     except Exception as e:
         print("❌ Error imprimiendo:", e)
 
-def generar_postal_en_memoria(imagen_bytes):
+def generar_postal_bytes(imagen_bytes, codigo):
     try:
         base = Image.open("static/plantilla_postal.jpg").convert("RGB")
         foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
         foto = foto.resize((430, 330))
         base.paste(foto, (90, 95))
 
+        # 🔁 Crear imagen JPEG en memoria
         salida = BytesIO()
         base.save(salida, format='JPEG')
         salida.seek(0)
 
-        pdf_bytes = BytesIO()
+        # 🖼️ Guardar imagen temporal en disco para FPDF
+        temp_jpg_path = os.path.join(BASE, f"temp_{codigo}.jpg")
+        with open(temp_jpg_path, "wb") as f:
+            f.write(salida.read())
+        salida.seek(0)
+
+        # 📄 Crear PDF con esa imagen
         pdf = FPDF(unit="cm", format="A4")
         pdf.add_page()
-        pdf.image(salida, x=5, y=5, w=10, type='JPEG')
-        pdf.output(pdf_bytes)
-        pdf_bytes.seek(0)
+        pdf.image(temp_jpg_path, x=5, y=5, w=10)
+        temp_pdf_path = os.path.join(BASE, f"temp_{codigo}.pdf")
+        pdf.output(temp_pdf_path)
 
-        return salida, pdf_bytes
+        return salida, temp_pdf_path
+
     except Exception as e:
-        print("❌ Error generando postal en memoria:", e)
+        print("❌ Error generando postal:", e)
         return None, None
 
 def subir_a_cloudinary_en_background(imagen_bytes, salida_jpg, codigo):
