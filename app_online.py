@@ -99,22 +99,26 @@ def subir_postal():
 
     salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
 
-    try:
-        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original")
-        r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_postal")
+# 🖨️ Imprimir primero
+if ruta_pdf and os.path.exists(ruta_pdf):
+    imprimir_postal(ruta_pdf)
 
-        urls_cloudinary[codigo] = {
-            "imagen": r1['secure_url'],
-            "postal": r2['secure_url']
-        }
+try:
+    # ☁️ Subir luego a Cloudinary
+    r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original")
+    r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_postal")
 
-        with open(URLS_FILE, "w") as f:
-            json.dump(urls_cloudinary, f)
+    urls_cloudinary[codigo] = {
+        "imagen": r1['secure_url'],
+        "postal": r2['secure_url']
+    }
 
-    except Exception as e:
-        print("❌ Error subiendo a Cloudinary:", e)
-        return "Error en subida", 500
+    with open(URLS_FILE, "w") as f:
+        json.dump(urls_cloudinary, f)
 
+except Exception as e:
+    print("❌ Error subiendo a Cloudinary:", e)
+    return "Error en subida", 500
     if ruta_pdf and os.path.exists(ruta_pdf):
         imprimir_postal(ruta_pdf)
 
