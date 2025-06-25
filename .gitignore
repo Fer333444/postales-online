@@ -1,0 +1,1 @@
+echo "__pycache__/\n*.jpg\n*.pdf\npreviews_camisetas/\ngalerias/\nurls_cloudinary.json" > .gitignore
