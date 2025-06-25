@@ -3,6 +3,7 @@
 import os
 import subprocess
 import json
+import threading	
 from flask import Flask, request, jsonify, redirect, render_template_string
 from PIL import Image, UnidentifiedImageError
 from fpdf import FPDF
@@ -46,7 +47,7 @@ def buscar():
 def imprimir_postal(path_pdf):
     try:
         if os.path.exists(SUMATRA):
-            subprocess.run([SUMATRA, '-print-to-default', '-silent', path_pdf])
+            subprocess.run([SUMATRA, '-print-t	o-default', '-silent', path_pdf])
             print("🖨️ Impresión enviada con SumatraPDF")
         else:
             print("⚠️ SumatraPDF.exe no encontrado")
@@ -101,7 +102,7 @@ def subir_postal():
 
     # 🖨️ Imprimir primero
     if ruta_pdf and os.path.exists(ruta_pdf):
-        imprimir_postal(ruta_pdf)
+        threading.Thread(target=imprimir_postal, args=(ruta_pdf,), daemon=True).start()
 
     try:
         # ☁️ Subir luego a Cloudinary
