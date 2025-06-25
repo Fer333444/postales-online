@@ -89,6 +89,7 @@ def subir_postal():
 
     imagen_bytes = archivo.read()
 
+    # Validar imagen antes de continuar
     try:
         test_image = Image.open(BytesIO(imagen_bytes))
         test_image.verify()
@@ -98,11 +99,12 @@ def subir_postal():
 
     salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
 
-    # ✅ Imprimir en segundo plano mientras sube a Cloudinary
+    # 🖨️ Imprimir primero
     if ruta_pdf and os.path.exists(ruta_pdf):
-        threading.Thread(target=imprimir_postal, args=(ruta_pdf,), daemon=True).start()
+        imprimir_postal(ruta_pdf)
 
     try:
+        # ☁️ Subir luego a Cloudinary
         r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original")
         r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_postal")
 
@@ -116,12 +118,10 @@ def subir_postal():
 
     except Exception as e:
         print("❌ Error subiendo a Cloudinary:", e)
-        return "Error en subida", 500
+        return "Error en subida", 500  # ✅ Ahora está dentro del except correctamente
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
-
-    return redirect(f"/view_image/{codigo}"
 
     return redirect(f"/view_image/{codigo}")
 @app.route('/view_image/<codigo>')
