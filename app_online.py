@@ -1,3 +1,5 @@
+# app_online.py optimizado con fpdf2 y generación de postal/PDF en memoria
+
 import os
 import subprocess
 import json
@@ -42,17 +44,21 @@ def buscar():
     codigo = request.args.get("codigo", "").strip()
     return redirect(f"/view_image/{codigo}")
 
-def imprimir_postal(path_pdf):
+def imprimir_postal_bytes(pdf_bytes, codigo):
     try:
+        temp_pdf = os.path.join(BASE, f"temp_{codigo}.pdf")
+        with open(temp_pdf, "wb") as f:
+            f.write(pdf_bytes.read())
+        pdf_bytes.seek(0)
         if os.path.exists(SUMATRA):
-            subprocess.Popen([SUMATRA, '-print-to-default', '-silent', path_pdf])
+            subprocess.Popen([SUMATRA, '-print-to-default', '-silent', temp_pdf])
             print("🖨️ Impresión enviada con SumatraPDF")
         else:
             print("⚠️ SumatraPDF.exe no encontrado")
     except Exception as e:
         print("❌ Error imprimiendo:", e)
 
-def generar_postal_bytes(imagen_bytes, codigo):
+def generar_postal_en_memoria(imagen_bytes):
     try:
         base = Image.open("static/plantilla_postal.jpg").convert("RGB")
         foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
@@ -63,25 +69,22 @@ def generar_postal_bytes(imagen_bytes, codigo):
         base.save(salida, format='JPEG')
         salida.seek(0)
 
+        pdf_bytes = BytesIO()
         pdf = FPDF(unit="cm", format="A4")
         pdf.add_page()
-        temp_jpg = os.path.join(BASE, f"temp_{codigo}.jpg")
-        with open(temp_jpg, "wb") as f:
-            f.write(salida.read())
-        salida.seek(0)
-        pdf.image(temp_jpg, x=5, y=5, w=10)
-        temp_pdf = os.path.join(BASE, f"temp_{codigo}.pdf")
-        pdf.output(temp_pdf)
+        pdf.image(salida, x=5, y=5, w=10, type='JPEG')
+        pdf.output(pdf_bytes)
+        pdf_bytes.seek(0)
 
-        return salida, temp_pdf
+        return salida, pdf_bytes
     except Exception as e:
-        print("❌ Error generando postal:", e)
+        print("❌ Error generando postal en memoria:", e)
         return None, None
 
 def subir_a_cloudinary_en_background(imagen_bytes, salida_jpg, codigo):
     try:
-        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original")
-        r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_postal")
+        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original", quality="auto:eco", eager_async=True)
+        r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_postal", quality="auto:eco", eager_async=True)
 
         urls_cloudinary[codigo] = {
             "imagen": r1['secure_url'],
@@ -110,15 +113,14 @@ def subir_postal():
         print(f"❌ Imagen inválida para {codigo}")
         return "❌ Imagen inválida", 502
 
-    salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
+    salida_jpg, pdf_bytes = generar_postal_en_memoria(imagen_bytes)
 
-    if ruta_pdf and os.path.exists(ruta_pdf):
-        imprimir_postal(ruta_pdf)
+    if pdf_bytes:
+        threading.Thread(target=imprimir_postal_bytes, args=(pdf_bytes, codigo), daemon=True).start()
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
-    # Subida paralela
     threading.Thread(target=subir_a_cloudinary_en_background, args=(imagen_bytes, salida_jpg, codigo)).start()
 
     return redirect(f"/view_image/{codigo}")
