@@ -263,8 +263,8 @@ def subir_postal():
             json.dump(urls_cloudinary, f)
 
     except Exception as e:
-        return f"Subida fallida: {str(e)}", 500
-
+    print(f"❌ Error en subida: {e}")
+    return f"Subida fallida: {str(e)}", 500
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
