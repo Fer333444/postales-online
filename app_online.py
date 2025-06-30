@@ -244,8 +244,9 @@ def subir_postal():
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
-    shopify_url = f"https://corbus.myshopify.com/products/camiseta-{codigo}"
-    boton = f'<a class="shopify-button" href="{shopify_url}" target="_blank">Comprar</a>'
+    shopify_url = data.get("shopify", "")
+    boton = f'<a class="shopify-button" href="{shopify_url}" target="_blank">Comprar</a>' if shopify_url else '<p style="color:gray;">Producto no disponible</p>'
+
     previews = []
     base_path = os.path.join(BASE, "static", "previews")
     if os.path.exists(base_path):
@@ -279,14 +280,14 @@ def ver_imagen(codigo):
         <h2>📸 Tu postal personalizada</h2>
         <div class="grid">
             <div>
-                <img src='{data.get("imagen", "")}' onclick='ampliar(this.src)'>
+                <img src="{data.get('imagen', '')}" onclick="ampliar(this.src)">
                 <br>{boton}
             </div>
             <div>
-                <img src='{data.get("postal", "")}' onclick='ampliar(this.src)'>
+                <img src="{data.get('postal', '')}" onclick="ampliar(this.src)">
                 <br>{boton}
             </div>
-            {''.join(f"<div><img src='{preview}' onclick='ampliar(this.src)'><br>{boton}</div>" for preview in previews)}
+            {''.join(f'<div><img src="{preview}" onclick="ampliar(this.src)"><br>{boton}</div>' for preview in previews)}
         </div>
         <div id="modal" onclick="cerrar()">
             <img id="modal-img">
