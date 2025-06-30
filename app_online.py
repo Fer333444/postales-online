@@ -243,66 +243,63 @@ def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo)
     if not data:
         return f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>No encontrado</title>
-            <style>
-                body {{
-                    background-color: #111; color: white; font-family: sans-serif; text-align: center; padding-top: 10%;
-                }}
-                a {{ color: #2ecc71; font-weight: bold; text-decoration: none; }}
-            </style>
-        </head>
-        <body>
-            <h2>❌ El código <code>{codigo}</code> no fue encontrado.</h2>
-            <p><a href="/">Volver al inicio</a></p>
-        </body>
-        </html>
+        <h2>❌ Código <code>{codigo}</code> no encontrado</h2>
+        <p><a href="/">Volver al inicio</a></p>
         ''', 404
 
-    enlace_postal = data.get('postal', '')
-    return f'''
+    # Enlaces de compra
+    link_postal = "https://buy.stripe.com/00w3cu64DbCWa1Bbut4ZG01"
+    link_camiseta = "https://www.pattseries.com/products/inclinacion-de-pecho"
+
+    boton_postal = f'<a class="shopify-button" href="{link_postal}" target="_blank">Comprar postal</a>'
+    boton_camiseta = f'<a class="shopify-button" href="{link_camiseta}" target="_blank">Comprar camiseta</a>'
+
+    # Camisetas generadas
+    previews = []
+    base_previews = os.path.join(BASE, "static", "previews")
+    if os.path.exists(base_previews):
+        for file in os.listdir(base_previews):
+            if file.startswith(f"preview_camiseta_{codigo}"):
+                previews.append(f"/static/previews/{file}")
+
+    # Postales múltiples generadas
+    postales_path = os.path.join(BASE, "static", "postales_generadas")
+    postales_multiples = []
+    if os.path.exists(postales_path):
+        for file in os.listdir(postales_path):
+            if file.startswith(codigo):
+                postales_multiples.append(f"/static/postales_generadas/{file}")
+
+    html = f'''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Tu Postal</title>
+        <title>Vista de postal y camisetas</title>
         <style>
-            body {{
-                background-color: #111;
-                color: white;
-                text-align: center;
-                font-family: sans-serif;
-                padding: 5%;
-            }}
-            img {{
-                max-width: 400px;
-                border: 2px solid white;
-                border-radius: 12px;
-                margin-bottom: 15px;
-            }}
-            a.button {{
-                background-color: #2ecc71;
-                color: white;
-                padding: 12px 25px;
-                border-radius: 5px;
-                text-decoration: none;
-                font-weight: bold;
-                display: inline-block;
-                margin-top: 10px;
+            body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
+            img {{ max-width: 280px; margin: 10px; cursor: pointer; border: 2px solid white; border-radius: 8px; }}
+            .grid {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }}
+            .shopify-button {{
+                background-color: #2ecc71; color: white; padding: 10px 20px;
+                margin: 5px auto; border: none; border-radius: 5px;
+                text-decoration: none; display: inline-block;
             }}
         </style>
     </head>
     <body>
         <h2>📸 Tu postal personalizada</h2>
-        <img src="{enlace_postal}" alt="Postal generada" />
-        <br>
-        <a href="{enlace_postal}" class="button" target="_blank">📥 Descargar postal</a>
-        <br><br>
-        <a href="/" class="button" style="background:#555;">Volver al inicio</a>
+        <div class="grid">
+            <div>
+                <img src="{data.get('imagen', '')}">
+                <br>{boton_postal}
+            </div>
+            {''.join(f'<div><img src="{url}"><br>{boton_postal}</div>' for url in postales_multiples)}
+            {''.join(f'<div><img src="{preview}"><br>{boton_camiseta}</div>' for preview in previews)}
+        </div>
     </body>
     </html>
     '''
+    return html
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
