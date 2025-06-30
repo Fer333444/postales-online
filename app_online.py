@@ -127,8 +127,14 @@ def subir_postal():
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
-    url_compra = "https://www.pattseries.com/products/inclinacion-de-pecho"
-    boton = f'<a class="shopify-button" href="{url_compra}" target="_blank">Comprar</a>'
+
+    # Links separados
+    link_postal = "https://buy.stripe.com/00w3cu64DbCWa1Bbut4ZG01"
+    link_camiseta = "https://www.pattseries.com/products/inclinacion-de-pecho"
+
+    # Botones diferentes
+    boton_postal = f'<a class="shopify-button" href="{link_postal}" target="_blank">Comprar</a>'
+    boton_camiseta = f'<a class="shopify-button" href="{link_camiseta}" target="_blank">Comprar</a>'
 
     previews = []
     base_previews = os.path.join(BASE, "static", "previews")
@@ -171,10 +177,10 @@ def ver_imagen(codigo):
         <div class="grid">
             <div>
                 <img src="{data.get('imagen', '')}" onclick="ampliar(this.src)">
-                <br>{boton}
+                <br>{boton_postal}
             </div>
-            {''.join(f'<div><img src="{url}" onclick="ampliar(this.src)"><br>{boton}</div>' for url in postales_multiples)}
-            {''.join(f'<div><img src="{preview}" onclick="ampliar(this.src)"><br>{boton}</div>' for preview in previews)}
+            {''.join(f'<div><img src="{url}" onclick="ampliar(this.src)"><br>{boton_postal}</div>' for url in postales_multiples)}
+            {''.join(f'<div><img src="{preview}" onclick="ampliar(this.src)"><br>{boton_camiseta}</div>' for preview in previews)}
         </div>
         <div id="modal" onclick="cerrar()">
             <img id="modal-img">
