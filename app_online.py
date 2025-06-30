@@ -143,14 +143,18 @@ def enviar_postal():
 def checkout():
     codigo = request.form.get("codigo")
     email = request.form.get("email")
+    postal = request.form.get("postal")  # 🆕 nombre del archivo seleccionado
 
-    if not codigo or not email:
-        return "Faltan datos", 400
+    if not codigo or not email or not postal:
+        return "Faltan datos para crear el pago", 400
 
     try:
         session = stripe.checkout.Session.create(
             customer_email=email,
-            metadata={"codigo": codigo},
+            metadata={
+                "codigo": codigo,
+                "postal": postal  # 🆕 se guarda cuál postal fue seleccionada
+            },
             payment_method_types=["card"],
             line_items=[{
                 "price_data": {
@@ -163,8 +167,8 @@ def checkout():
                 "quantity": 1
             }],
             mode="payment",
-            success_url=f"/success?codigo={codigo}",
-            cancel_url="/cancel"
+            success_url=f"https://postales-online.onrender.com/success?codigo={codigo}",
+            cancel_url="https://postales-online.onrender.com/cancel"
         )
         return redirect(session.url, code=303)
 
@@ -279,7 +283,7 @@ def ver_imagen(codigo):
     if os.path.exists(postales_path):
         for file in os.listdir(postales_path):
             if file.startswith(codigo):
-                postales_multiples.append(f"/static/postales_generadas/{file}")
+                postales_multiples.append(file)  # solo el nombre
 
     html = f'''
     <!DOCTYPE html>
@@ -305,6 +309,10 @@ def ver_imagen(codigo):
                 border: 2px solid white;
                 border-radius: 8px;
             }}
+            label {{
+                display: block;
+                margin-top: 10px;
+            }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
@@ -315,33 +323,42 @@ def ver_imagen(codigo):
                 text-decoration: none;
                 display: inline-block;
             }}
-            input[type="email"] {{
+            input[type="email"], select {{
                 padding: 10px;
                 font-size: 16px;
-                margin-top: 10px;
                 border-radius: 5px;
-                border: none;
+                margin-top: 10px;
             }}
         </style>
     </head>
     <body>
         <h2>📸 Tu postal personalizada</h2>
         <div class="grid">
-            <div>
-                <img src="{data.get('imagen', '')}" alt="Postal original"><br>
-            </div>
-            {''.join(f'<div><img src="{url}" alt="Estilo"><br></div>' for url in postales_multiples)}
+            {''.join(f'<div><img src="/static/postales_generadas/{file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
         </div>
 
         <div>
-            <h3>💌 Recibe tu postal por email tras el pago</h3>
+            <h3>💌 Recibe tu postal seleccionada por email tras el pago</h3>
             <form action="/checkout" method="POST">
                 <input type="hidden" name="codigo" value="{codigo}">
-                <input type="email" name="email" placeholder="Tu correo electrónico" required>
-                <br>
+                <input type="email" name="email" placeholder="Tu correo electrónico" required><br>
                 <button type="submit" class="shopify-button">💳 Pagar y recibir postal</button>
             </form>
         </div>
+
+        <script>
+            const form = document.querySelector("form");
+            form.addEventListener("submit", function(e) {{
+                const selected = document.querySelector("input[name='postal']:checked");
+                if (selected) {{
+                    const input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = "postal";
+                    input.value = selected.value;
+                    form.appendChild(input);
+                }}
+            }});
+        </script>
     </body>
     </html>
     '''
