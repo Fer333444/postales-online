@@ -138,6 +138,11 @@ def crear_producto_shopify(codigo, ruta_imagen_local):
         print("❌ Error creando producto:", response.status_code, response.text)
         return None
 
+@app.route('/search')
+def buscar():
+    codigo = request.args.get("codigo", "").strip()
+    return redirect(f"/view_image/{codigo}")
+
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
     codigo = request.form.get("codigo")
