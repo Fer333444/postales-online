@@ -114,25 +114,51 @@ def subir_postal():
 
     imagen_bytes = archivo.read()
 
+    # 🛡️ Validar imagen antes de continuar
     try:
         test_image = Image.open(BytesIO(imagen_bytes))
         test_image.verify()
     except UnidentifiedImageError:
-        print(f"❌ Imagen inválida para {codigo}")
-        return "❌ Imagen inválida", 502
+        print(f"❌ Imagen inválida o corrupta para código: {codigo}")
+        return "❌ Imagen inválida o corrupta", 502
 
-    salida_jpg, pdf_bytes = generar_postal_en_memoria(imagen_bytes)
+    # 📦 Generar postal y PDF
+    salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
 
-    if pdf_bytes:
-        threading.Thread(target=imprimir_postal_bytes, args=(pdf_bytes, codigo), daemon=True).start()
+    # 🖨️ Imprimir antes de subir
+    if ruta_pdf and os.path.exists(ruta_pdf):
+        imprimir_postal(ruta_pdf)
 
+    # ⏱️ Timestamp para evitar duplicados
+    import time
+    timestamp = int(time.time())
+
+    # 🧠 Validar tamaño mínimo
+    if len(imagen_bytes) < 100:
+        print("❌ Imagen demasiado pequeña o vacía.")
+        return "Imagen vacía", 400
+
+    try:
+        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
+        r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_{timestamp}_postal", overwrite=True)
+
+        urls_cloudinary[codigo] = {
+            "imagen": r1['secure_url'],
+            "postal": r2['secure_url']
+        }
+
+        with open(URLS_FILE, "w") as f:
+            json.dump(urls_cloudinary, f)
+
+    except Exception as e:
+        print(f"❌ Cloudinary error real: {str(e)}")
+        return "Subida fallida", 500
+
+    # ✅ Añadir a cola
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
-    threading.Thread(target=subir_a_cloudinary_en_background, args=(imagen_bytes, salida_jpg, codigo)).start()
-
     return redirect(f"/view_image/{codigo}")
-
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
