@@ -57,7 +57,7 @@ def crear_producto_shopify(codigo, imagen_url):
 
     response = requests.post(url_api, json=data, headers=headers)
 
-        if response.status_code == 201:
+    if response.status_code == 201:
         product = response.json()['product']
         variant_id = product['variants'][0]['id']
         enlace = f"https://{tienda}.myshopify.com/cart/{variant_id}:1"
@@ -66,8 +66,6 @@ def crear_producto_shopify(codigo, imagen_url):
     else:
         print("❌ Error creando producto:", response.status_code, response.text)
         return None
-	
-
 def imprimir_postal_bytes(pdf_bytes, codigo):
     try:
         temp_pdf = os.path.join(BASE, f"temp_{codigo}.pdf")
