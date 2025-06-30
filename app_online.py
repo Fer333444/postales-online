@@ -193,6 +193,25 @@ def ver_imagen(codigo):
     </html>
     '''
     return html
+@app.route('/')
+def index():
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Bienvenido</title>
+        <style>
+            body { text-align: center; font-family: sans-serif; padding: 60px; background: #111; color: white; }
+            a { background: #2ecc71; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; }
+        </style>
+    </head>
+    <body>
+        <h1>👋 Bienvenido a Postales Online</h1>
+        <p>Sube una imagen desde tu app para ver las postales generadas.</p>
+        <a href="/view_image/ejemplo123">Ver ejemplo</a>
+    </body>
+    </html>
+    '''
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
