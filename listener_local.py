@@ -1,165 +1,42 @@
 import os
-import subprocess
-from flask import Flask, request, send_from_directory, jsonify, redirect, render_template_string
+import time
+import requests
 from PIL import Image
-from fpdf import FPDF
+from io import BytesIO
 
-app = Flask(__name__)
+print("📡 Listener activo – usando reportlab para impresión en grises reales")
 
-BASE = os.path.dirname(os.path.abspath(__file__))
-CARPETA_GALERIAS = os.path.join(BASE, "galerias")
-CARPETA_CLIENTE = os.path.join(CARPETA_GALERIAS, "cliente123")
-os.makedirs(CARPETA_CLIENTE, exist_ok=True)
-cola_postales = []
+CARPETA_FOTOS = "fotos_nuevas"
+URL_SERVIDOR = "https://postales-online.onrender.com/subir_postal"
+PROCESADAS = set()
 
-SUMATRA = os.path.join(BASE, "SumatraPDF.exe")
+while True:
+    archivos = [f for f in os.listdir(CARPETA_FOTOS) if f.endswith(".jpg")]
+    nuevos = [f for f in archivos if f not in PROCESADAS]
 
-def imprimir_postal(path_pdf):
-    try:
-        if os.path.exists(SUMATRA):
-            subprocess.run([SUMATRA, '-print-to-default', '-silent', path_pdf])
-    except Exception as e:
-        print("❌ Error imprimiendo:", e)
+    for nombre in nuevos:
+        path = os.path.join(CARPETA_FOTOS, nombre)
+        try:
+            with open(path, "rb") as f:
+                imagen = f.read()
 
-@app.route('/')
-def index():
-    return render_template_string("""
-    <!DOCTYPE html>
-    <html lang='en'>
-    <head>
-        <meta charset='UTF-8'>
-        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-        <title>Postcard Search</title>
-        <style>
-            html, body {
-                margin: 0; padding: 0;
-                height: 100vh;
-                overflow: hidden;
-                font-family: Arial, sans-serif;
-            }
-            video#bgVideo {
-                position: fixed;
-                top: 0; left: 0;
-                min-width: 100%; min-height: 100%;
-                object-fit: cover;
-                z-index: -1;
-            }
-            .contenedor {
-                background-color: rgba(255,255,255,0.8);
-                padding: 30px;
-                border-radius: 12px;
-                text-align: center;
-                width: 90%;
-                max-width: 400px;
-                margin: 20vh auto;
-            }
-            input, button {
-                width: 100%;
-                padding: 12px;
-                font-size: 18px;
-                margin-top: 10px;
-                border: none;
-                border-radius: 6px;
-            }
-            button {
-                background: black;
-                color: white;
-                cursor: pointer;
-            }
-        </style>
-    </head>
-    <body>
-        <video autoplay muted loop id='bgVideo'>
-            <source src='/static/douro_sunset.mp4' type='video/mp4'>
-        </video>
-        <div class='contenedor'>
-            <h2>🔍 Search your Postcard</h2>
-            <form action='/search' method='get'>
-                <input type='text' name='codigo' placeholder='Ex: abc123' required />
-                <button type='submit'>Search</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    """)
+            timestamp = nombre.split(" ")[-1].replace(".jpg", "")
+            codigo = timestamp[-8:]  # genera código único
+            archivos_post = {"imagen": (nombre, BytesIO(imagen), "image/jpeg")}
+            data = {"codigo": codigo}
 
-@app.route('/search')
-def buscar():
-    codigo = request.args.get("codigo", "").strip()
-    return redirect(f"/view_image/{codigo}")
+            response = requests.post(URL_SERVIDOR, files=archivos_post, data=data)
 
-@app.route('/view_image/<codigo>')
-def ver_imagen(codigo):
-    ruta_img = f"/galeria/cliente123/imagen_{codigo}.jpg"
-    ruta_postal = f"/galeria/cliente123/postal_{codigo}.jpg"
-    path_img = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    path_postal = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
+            if response.status_code == 200:
+                print(f"✅ Subida exitosa ({codigo})")
+            else:
+                print(f"❌ Error al subir Imagen de WhatsApp {nombre}: {response.status_code}")
+                print("🔍 Respuesta del servidor:")
+                print(response.text)
 
-    imagen_existe = os.path.exists(path_img)
-    postal_existe = os.path.exists(path_postal)
+        except Exception as e:
+            print(f"⚠️ Error general: {e}")
 
-    return render_template_string(f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='UTF-8'>
-            <title>Postcard {{codigo}}</title>
-        </head>
-        <body>
-            <h2>📸 Your Postcard & Original</h2>
-            {{'<img src=' + ruta_img + '>' if imagen_existe else '<p>❌ Original photo not found.</p>'}}
-            {{'<img src=' + ruta_postal + '>' if postal_existe else '<p>❌ Postcard not generated yet.</p>'}}
-            <br><a href='/'>← Back</a>
-        </body>
-        </html>
-    """, codigo=codigo, ruta_img=ruta_img, ruta_postal=ruta_postal,
-       imagen_existe=imagen_existe, postal_existe=postal_existe)
+        PROCESADAS.add(nombre)
 
-@app.route('/subir_postal', methods=['POST'])
-def subir_postal():
-    codigo = request.form.get("codigo")
-    imagen = request.files.get("imagen")
-    if not codigo or not imagen:
-        return "❌ Código o imagen faltante", 400
-    ruta_img = os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")
-    imagen.save(ruta_img)
-    ruta_pdf = insertar_foto_en_postal(codigo)
-    if ruta_pdf and os.path.exists(ruta_pdf):
-        imprimir_postal(ruta_pdf)
-    if codigo not in cola_postales:
-        cola_postales.append(codigo)
-    return "✅ Imagen subida correctamente", 200
-
-@app.route('/nuevas_postales')
-def nuevas_postales():
-    if cola_postales:
-        codigo = cola_postales.pop(0)
-        return jsonify({"codigo": codigo})
-    return jsonify({"codigo": None})
-
-@app.route('/galeria/cliente123/<archivo>')
-def servir_imagen(archivo):
-    return send_from_directory(CARPETA_CLIENTE, archivo)
-
-def insertar_foto_en_postal(codigo):
-    try:
-        base = Image.open(os.path.join(BASE, "static", "plantilla_postal.jpg")).convert("RGB")
-        foto = Image.open(os.path.join(CARPETA_CLIENTE, f"imagen_{codigo}.jpg")).convert("RGB")
-        foto = foto.resize((430, 330))
-        base.paste(foto, (90, 95))
-        salida = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.jpg")
-        base.save(salida)
-
-        pdf = FPDF(unit="cm", format="A4")
-        pdf.add_page()
-        pdf.image(salida, x=5, y=5, w=10)
-        ruta_pdf = os.path.join(CARPETA_CLIENTE, f"postal_{codigo}.pdf")
-        pdf.output(ruta_pdf)
-        return ruta_pdf
-    except Exception as e:
-        print(f"❌ Error generando postal: {e}")
-        return None
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    time.sleep(2)
