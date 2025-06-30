@@ -72,103 +72,6 @@ def enviar_email_profesional(destinatario, enlace):
         print(f"✅ Email enviado a {destinatario} ({response.status_code})")
     except Exception as e:
         print(f"❌ Error enviando email: {e}")
-@app.route('/view_image/<codigo>')
-def ver_imagen(codigo):
-    data = urls_cloudinary.get(codigo)
-
-    if not data:
-        return f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>No encontrado</title>
-            <style>
-                body {{
-                    background-color: #111; color: white; font-family: sans-serif; text-align: center; padding-top: 10%;
-                }}
-                a {{ color: #2ecc71; font-weight: bold; text-decoration: none; }}
-            </style>
-        </head>
-        <body>
-            <h2>❌ El código <code>{codigo}</code> no fue encontrado.</h2>
-            <p>¿Estás seguro de que lo escribiste bien?</p>
-            <p><a href="/">Volver al inicio</a></p>
-        </body>
-        </html>
-        ''', 404
-
-    # Enlaces de compra
-    link_postal = "https://buy.stripe.com/00w3cu64DbCWa1Bbut4ZG01"
-    link_camiseta = "https://www.pattseries.com/products/inclinacion-de-pecho"
-
-    boton_postal = f'<a class="shopify-button" href="{link_postal}" target="_blank">Comprar</a>'
-    boton_camiseta = f'<a class="shopify-button" href="{link_camiseta}" target="_blank">Comprar</a>'
-
-    # Camisetas
-    previews = []
-    base_previews = os.path.join(BASE, "static", "previews")
-    if os.path.exists(base_previews):
-        for file in os.listdir(base_previews):
-            if file.startswith(f"preview_camiseta_{codigo}"):
-                previews.append(f"/static/previews/{file}")
-
-    # Postales múltiples
-    postales_path = os.path.join(BASE, "static", "postales_generadas")
-    postales_multiples = []
-    if os.path.exists(postales_path):
-        for file in os.listdir(postales_path):
-            if file.startswith(codigo):
-                postales_multiples.append(f"/static/postales_generadas/{file}")
-
-    html = f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Vista de postal y camisetas</title>
-        <style>
-            body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
-            img {{ max-width: 280px; margin: 10px; cursor: pointer; border: 2px solid white; border-radius: 8px; }}
-            .grid {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }}
-            .shopify-button {{
-                background-color: #2ecc71; color: white; padding: 10px 20px;
-                margin: 5px auto; border: none; border-radius: 5px;
-                text-decoration: none; display: inline-block;
-            }}
-            #modal {{
-                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center;
-                z-index: 1000;
-            }}
-            #modal img {{ max-height: 90%; max-width: 90%; }}
-        </style>
-    </head>
-    <body>
-        <h2>📸 Tu postal personalizada</h2>
-        <div class="grid">
-            <div>
-                <img src="{data.get('imagen', '')}" onclick="ampliar(this.src)">
-                <br>{boton_postal}
-            </div>
-            {''.join(f'<div><img src="{url}" onclick="ampliar(this.src)"><br>{boton_postal}</div>' for url in postales_multiples)}
-            {''.join(f'<div><img src="{preview}" onclick="ampliar(this.src)"><br>{boton_camiseta}</div>' for preview in previews)}
-        </div>
-        <div id="modal" onclick="cerrar()">
-            <img id="modal-img">
-        </div>
-        <script>
-            function ampliar(src) {{
-                document.getElementById("modal-img").src = src;
-                document.getElementById("modal").style.display = "flex";
-            }}
-            function cerrar() {{
-                document.getElementById("modal").style.display = "none";
-                document.getElementById("modal-img").src = "";
-            }}
-        </script>
-    </body>
-    </html>
-    '''
-    return html
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
@@ -190,7 +93,7 @@ def subir_postal():
         r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
         urls_cloudinary[codigo] = {
             "imagen": r1['secure_url'],
-            "postal": postales_urls[0] if postales_urls else "",
+            "postal": postales_urls[0] if postales_urls else ""
         }
         with open("urls_cloudinary.json", "w") as f:
             json.dump(urls_cloudinary, f)
@@ -209,7 +112,7 @@ def checkout():
         <form action="/checkout" method="POST">
             <input type="hidden" name="codigo" value="{codigo}" />
             <input type="email" name="email" placeholder="Tu correo" required />
-            <button type="submit">Pagar con Stripe</button>
+            <button type="submit">Pagar con Stripe (Apple Pay incluido)</button>
         </form>
         '''
     else:
@@ -232,8 +135,8 @@ def checkout():
                     "quantity": 1
                 }],
                 mode="payment",
-                success_url=f"https://TUDOMINIO.com/success?codigo={codigo}",
-                cancel_url="https://TUDOMINIO.com/cancel",
+                success_url=f"/success?codigo={codigo}",
+                cancel_url="/cancel",
                 metadata={"codigo": codigo}
             )
             return redirect(session.url, code=303)
@@ -251,13 +154,30 @@ def webhook_stripe():
         return f"Webhook inválido: {e}", 400
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        email = session['customer_email']
+        email = session.get('customer_email')
         codigo = session['metadata'].get('codigo')
         enlace = urls_cloudinary.get(codigo, {}).get('postal')
-        if enlace:
+        if email and enlace:
             enviar_email_profesional(email, enlace)
     return '', 200
 
+@app.route('/success')
+def success():
+    codigo = request.args.get("codigo", "")
+    return f'''
+    <h2>✅ ¡Pago exitoso!</h2>
+    <p>Tu postal con código <strong>{codigo}</strong> ha sido procesada.</p>
+    <p>Revisa tu correo para descargarla.</p>
+    <p><a href="/">Volver al inicio</a></p>
+    '''
+
+@app.route('/cancel')
+def cancel():
+    return '''
+    <h2>⚠️ Pago cancelado</h2>
+    <p>No se ha realizado ningún cargo.</p>
+    <p><a href="/">Volver al inicio</a></p>
+    '''
 @app.route('/')
 def index():
     return '''
@@ -292,6 +212,8 @@ def index():
                 padding: 10px;
                 font-size: 16px;
                 margin-top: 10px;
+                border-radius: 5px;
+                border: none;
             }
         </style>
     </head>
@@ -300,20 +222,87 @@ def index():
             <source src="/static/douro_sunset.mp4" type="video/mp4">
         </video>
         <div class="contenido">
-            <h2>Buscar postal</h2>
+            <h2>🔍 Buscar tu postal</h2>
             <form action="/search" method="get">
                 <input type="text" name="codigo" placeholder="Ej: abc123" required />
                 <br>
-                <button type="submit">Buscar postal</button>
+                <button type="submit">Ver postal</button>
             </form>
         </div>
     </body>
     </html>
     '''
+
 @app.route('/search')
 def buscar():
     codigo = request.args.get("codigo", "").strip()
     return redirect(f"/view_image/{codigo}")
+
+@app.route('/view_image/<codigo>')
+def ver_imagen(codigo):
+    data = urls_cloudinary.get(codigo)
+    if not data:
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>No encontrado</title>
+            <style>
+                body {{
+                    background-color: #111; color: white; font-family: sans-serif; text-align: center; padding-top: 10%;
+                }}
+                a {{ color: #2ecc71; font-weight: bold; text-decoration: none; }}
+            </style>
+        </head>
+        <body>
+            <h2>❌ El código <code>{codigo}</code> no fue encontrado.</h2>
+            <p><a href="/">Volver al inicio</a></p>
+        </body>
+        </html>
+        ''', 404
+
+    enlace_postal = data.get('postal', '')
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Tu Postal</title>
+        <style>
+            body {{
+                background-color: #111;
+                color: white;
+                text-align: center;
+                font-family: sans-serif;
+                padding: 5%;
+            }}
+            img {{
+                max-width: 400px;
+                border: 2px solid white;
+                border-radius: 12px;
+                margin-bottom: 15px;
+            }}
+            a.button {{
+                background-color: #2ecc71;
+                color: white;
+                padding: 12px 25px;
+                border-radius: 5px;
+                text-decoration: none;
+                font-weight: bold;
+                display: inline-block;
+                margin-top: 10px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h2>📸 Tu postal personalizada</h2>
+        <img src="{enlace_postal}" alt="Postal generada" />
+        <br>
+        <a href="{enlace_postal}" class="button" target="_blank">📥 Descargar postal</a>
+        <br><br>
+        <a href="/" class="button" style="background:#555;">Volver al inicio</a>
+    </body>
+    </html>
+    '''
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
