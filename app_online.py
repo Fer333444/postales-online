@@ -1,5 +1,3 @@
-# app_online.py optimizado con fpdf2 y generación de postal/PDF en memoria
-
 import os
 import subprocess
 import json
@@ -10,6 +8,7 @@ from fpdf import FPDF
 import cloudinary
 import cloudinary.uploader
 from io import BytesIO
+import time
 
 cloudinary.config(
     cloud_name='dlcbxtcin',
@@ -60,23 +59,24 @@ def imprimir_postal_bytes(pdf_bytes, codigo):
 
 def generar_postal_bytes(imagen_bytes, codigo):
     try:
-        base = Image.open("static/plantilla_postal.jpg").convert("RGB")
+        plantilla_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
+        if not os.path.exists(plantilla_path):
+            raise FileNotFoundError("No se encuentra la plantilla_postal.jpg")
+
+        base = Image.open(plantilla_path).convert("RGB")
         foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
         foto = foto.resize((430, 330))
         base.paste(foto, (90, 95))
 
-        # 🔁 Crear imagen JPEG en memoria
         salida = BytesIO()
         base.save(salida, format='JPEG')
         salida.seek(0)
 
-        # 🖼️ Guardar imagen temporal en disco para FPDF
         temp_jpg_path = os.path.join(BASE, f"temp_{codigo}.jpg")
         with open(temp_jpg_path, "wb") as f:
             f.write(salida.read())
         salida.seek(0)
 
-        # 📄 Crear PDF con esa imagen
         pdf = FPDF(unit="cm", format="A4")
         pdf.add_page()
         pdf.image(temp_jpg_path, x=5, y=5, w=10)
@@ -89,22 +89,6 @@ def generar_postal_bytes(imagen_bytes, codigo):
         print("❌ Error generando postal:", e)
         return None, None
 
-def subir_a_cloudinary_en_background(imagen_bytes, salida_jpg, codigo):
-    try:
-        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_original", quality="auto:eco", eager_async=True)
-        r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_postal", quality="auto:eco", eager_async=True)
-
-        urls_cloudinary[codigo] = {
-            "imagen": r1['secure_url'],
-            "postal": r2['secure_url']
-        }
-
-        with open(URLS_FILE, "w") as f:
-            json.dump(urls_cloudinary, f)
-        print(f"☁️ Subida completa para {codigo}")
-    except Exception as e:
-        print("❌ Error subiendo en background:", e)
-
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
     codigo = request.form.get("codigo")
@@ -114,7 +98,6 @@ def subir_postal():
 
     imagen_bytes = archivo.read()
 
-    # 🛡️ Validar imagen antes de continuar
     try:
         test_image = Image.open(BytesIO(imagen_bytes))
         test_image.verify()
@@ -122,21 +105,18 @@ def subir_postal():
         print(f"❌ Imagen inválida o corrupta para código: {codigo}")
         return "❌ Imagen inválida o corrupta", 502
 
-    # 📦 Generar postal y PDF
-    salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
-
-    # 🖨️ Imprimir antes de subir
-    if ruta_pdf and os.path.exists(ruta_pdf):
-        imprimir_postal(ruta_pdf)
-
-    # ⏱️ Timestamp para evitar duplicados
-    import time
-    timestamp = int(time.time())
-
-    # 🧠 Validar tamaño mínimo
     if len(imagen_bytes) < 100:
         print("❌ Imagen demasiado pequeña o vacía.")
         return "Imagen vacía", 400
+
+    salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
+
+    # ✅ Corrección: ahora sí llama a la función que existe
+    if ruta_pdf and os.path.exists(ruta_pdf):
+        with open(ruta_pdf, "rb") as f:
+            imprimir_postal_bytes(BytesIO(f.read()), codigo)
+
+    timestamp = int(time.time())
 
     try:
         r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
@@ -152,13 +132,13 @@ def subir_postal():
 
     except Exception as e:
         print(f"❌ Cloudinary error real: {str(e)}")
-        return "Subida fallida", 500
+        return f"Subida fallida: {str(e)}", 500
 
-    # ✅ Añadir a cola
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
     return redirect(f"/view_image/{codigo}")
+
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
