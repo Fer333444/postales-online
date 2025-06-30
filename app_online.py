@@ -1,14 +1,13 @@
 import os
 import subprocess
 import json
-import threading
+import time
 from flask import Flask, request, jsonify, redirect, render_template_string
 from PIL import Image, UnidentifiedImageError
 from fpdf import FPDF
+from io import BytesIO
 import cloudinary
 import cloudinary.uploader
-from io import BytesIO
-import time
 
 cloudinary.config(
     cloud_name='dlcbxtcin',
@@ -17,7 +16,6 @@ cloudinary.config(
 )
 
 app = Flask(__name__)
-
 BASE = os.path.dirname(os.path.abspath(__file__))
 URLS_FILE = os.path.join(BASE, "urls_cloudinary.json")
 SUMATRA = os.path.join(BASE, "SumatraPDF.exe")
@@ -28,82 +26,6 @@ if os.path.exists(URLS_FILE):
     with open(URLS_FILE) as f:
         urls_cloudinary = json.load(f)
 
-@app.route('/')
-def index():
-    return render_template_string("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Buscar postal</title>
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
-
-            body, html {
-                height: 100%;
-                font-family: Arial, sans-serif;
-            }
-
-            video#bg-video {
-                position: fixed;
-                right: 0;
-                bottom: 0;
-                min-width: 100%;
-                min-height: 100%;
-                object-fit: cover;
-                z-index: -1;
-                filter: brightness(0.4);
-            }
-
-            .contenido {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                color: white;
-                text-align: center;
-                background-color: rgba(0, 0, 0, 0.6);
-                padding: 40px;
-                border-radius: 15px;
-            }
-
-            input, button {
-                padding: 10px;
-                font-size: 16px;
-                margin-top: 10px;
-            }
-
-            h2 {
-                margin-bottom: 20px;
-            }
-        </style>
-    </head>
-    <body>
-        <video autoplay muted loop playsinline id="bg-video">
-            <source src='/static/douro_sunset.mp4' type='video/mp4'>
-            Tu navegador no soporta videos HTML5.
-        </video>
-
-        <div class="contenido">
-            <h2>Buscar postal</h2>
-            <form action="/search" method="get">
-                <input type="text" name="codigo" placeholder="Ej: abc123" required />
-                <br>
-                <button type="submit">Buscar postal</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    """)
-@app.route('/search')
-def buscar():
-    codigo = request.args.get("codigo", "").strip()
-    return redirect(f"/view_image/{codigo}")
-
 def imprimir_postal_bytes(pdf_bytes, codigo):
     try:
         temp_pdf = os.path.join(BASE, f"temp_{codigo}.pdf")
@@ -113,17 +35,12 @@ def imprimir_postal_bytes(pdf_bytes, codigo):
         if os.path.exists(SUMATRA):
             subprocess.Popen([SUMATRA, '-print-to-default', '-silent', temp_pdf])
             print("🖨️ Impresión enviada con SumatraPDF")
-        else:
-            print("⚠️ SumatraPDF.exe no encontrado")
     except Exception as e:
         print("❌ Error imprimiendo:", e)
 
 def generar_postal_bytes(imagen_bytes, codigo):
     try:
         plantilla_path = os.path.join(BASE, "static", "plantilla_postal.jpg")
-        if not os.path.exists(plantilla_path):
-            raise FileNotFoundError("No se encuentra la plantilla_postal.jpg")
-
         base = Image.open(plantilla_path).convert("RGB")
         foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
         foto = foto.resize((430, 330))
@@ -150,6 +67,87 @@ def generar_postal_bytes(imagen_bytes, codigo):
         print("❌ Error generando postal:", e)
         return None, None
 
+def generar_preview_camisetas(imagen_bytes, codigo):
+    rutas = []
+    base_dir = os.path.join(BASE, "static", "previews")
+    os.makedirs(base_dir, exist_ok=True)
+
+    combinaciones = [
+        ("hombre", "blanca", "camiseta_hombre_blanca.jpg"),
+        ("mujer", "negra", "camiseta_mujer_negra.jpg")
+    ]
+
+    for genero, color, plantilla in combinaciones:
+        try:
+            fondo = Image.open(os.path.join(BASE, "static", plantilla)).convert("RGBA")
+            foto = Image.open(BytesIO(imagen_bytes)).resize((220, 220)).convert("RGBA")
+            fondo.paste(foto, (95, 120), foto)
+            salida_path = os.path.join(base_dir, f"preview_camiseta_{codigo}_{genero}_{color}.png")
+            fondo.save(salida_path)
+            rutas.append(salida_path)
+        except Exception as e:
+            print(f"❌ Error generando camiseta {genero}-{color}: {e}")
+
+    return rutas
+
+@app.route('/')
+def index():
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Buscar postal</title>
+        <style>
+            video#bg-video {
+                position: fixed;
+                right: 0;
+                bottom: 0;
+                min-width: 100%;
+                min-height: 100%;
+                object-fit: cover;
+                z-index: -1;
+                filter: brightness(0.4);
+            }
+            .contenido {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                text-align: center;
+                background-color: rgba(0, 0, 0, 0.6);
+                padding: 40px;
+                border-radius: 15px;
+            }
+            input, button {
+                padding: 10px;
+                font-size: 16px;
+                margin-top: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <video autoplay muted loop playsinline id="bg-video">
+            <source src='/static/douro_sunset.mp4' type='video/mp4'>
+        </video>
+        <div class="contenido">
+            <h2>Buscar postal</h2>
+            <form action="/search" method="get">
+                <input type="text" name="codigo" placeholder="Ej: abc123" required />
+                <br>
+                <button type="submit">Buscar postal</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.route('/search')
+def buscar():
+    codigo = request.args.get("codigo", "").strip()
+    return redirect(f"/view_image/{codigo}")
+
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
     codigo = request.form.get("codigo")
@@ -163,22 +161,19 @@ def subir_postal():
         test_image = Image.open(BytesIO(imagen_bytes))
         test_image.verify()
     except UnidentifiedImageError:
-        print(f"❌ Imagen inválida o corrupta para código: {codigo}")
         return "❌ Imagen inválida o corrupta", 502
 
     if len(imagen_bytes) < 100:
-        print("❌ Imagen demasiado pequeña o vacía.")
         return "Imagen vacía", 400
 
     salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
+    generar_preview_camisetas(imagen_bytes, codigo)
 
-    # ✅ Corrección: ahora sí llama a la función que existe
     if ruta_pdf and os.path.exists(ruta_pdf):
         with open(ruta_pdf, "rb") as f:
             imprimir_postal_bytes(BytesIO(f.read()), codigo)
 
     timestamp = int(time.time())
-
     try:
         r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
         r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_{timestamp}_postal", overwrite=True)
@@ -192,7 +187,6 @@ def subir_postal():
             json.dump(urls_cloudinary, f)
 
     except Exception as e:
-        print(f"❌ Cloudinary error real: {str(e)}")
         return f"Subida fallida: {str(e)}", 500
 
     if codigo not in cola_postales:
@@ -203,12 +197,56 @@ def subir_postal():
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
-    return render_template_string(f"""
-    <h2>📸 Your Postcard & Original</h2>
-    {'<img src="' + data.get('imagen', '') + '" width="300">' if data.get('imagen') else '<p>❌ Original photo not found.</p>'}
-    {'<img src="' + data.get('postal', '') + '" width="300">' if data.get('postal') else '<p>❌ Postcard not generated yet.</p>'}<br>
-    <a href="/">← Back</a>
-    """)
+    previews = []
+    base_path = os.path.join(BASE, "static", "previews")
+    if os.path.exists(base_path):
+        for file in os.listdir(base_path):
+            if file.startswith(f"preview_camiseta_{codigo}"):
+                previews.append(f"/static/previews/{file}")
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Vista de postal y camisetas</title>
+        <style>
+            body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
+            img {{ max-width: 280px; margin: 10px; cursor: pointer; border: 2px solid white; border-radius: 8px; }}
+            .grid {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }}
+            #modal {{
+                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center;
+                z-index: 1000;
+            }}
+            #modal img {{ max-height: 90%; max-width: 90%; }}
+        </style>
+    </head>
+    <body>
+        <h2>📸 Tu postal personalizada</h2>
+        <div class="grid">
+            {"<img src='" + data.get("imagen", "") + "' onclick='ampliar(this.src)'>" if data.get("imagen") else "<p>❌ Sin imagen original.</p>"}
+            {"<img src='" + data.get("postal", "") + "' onclick='ampliar(this.src)'>" if data.get("postal") else "<p>❌ Postal no generada.</p>"}
+            {''.join(f"<img src='{preview}' onclick='ampliar(this.src)'>" for preview in previews)}
+        </div>
+
+        <div id="modal" onclick="cerrar()">
+            <img id="modal-img">
+        </div>
+
+        <script>
+            function ampliar(src) {{
+                document.getElementById("modal-img").src = src;
+                document.getElementById("modal").style.display = "flex";
+            }}
+            function cerrar() {{
+                document.getElementById("modal").style.display = "none";
+                document.getElementById("modal-img").src = "";
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    return html
 
 @app.route('/nuevas_postales')
 def nuevas_postales():
