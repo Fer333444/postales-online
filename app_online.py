@@ -253,7 +253,7 @@ def ver_imagen(codigo):
             if file.startswith(f"preview_camiseta_{codigo}"):
                 previews.append(f"/static/previews/{file}")
 
-    html = f"""
+    html = f'''
     <!DOCTYPE html>
     <html>
     <head>
@@ -279,14 +279,14 @@ def ver_imagen(codigo):
         <h2>📸 Tu postal personalizada</h2>
         <div class="grid">
             <div>
-                <img src="{data.get('imagen', '')}" onclick="ampliar(this.src)">
+                <img src='{data.get("imagen", "")}' onclick='ampliar(this.src)'>
                 <br>{boton}
             </div>
             <div>
-                <img src="{data.get('postal', '')}" onclick="ampliar(this.src)">
+                <img src='{data.get("postal", "")}' onclick='ampliar(this.src)'>
                 <br>{boton}
             </div>
-            {''.join(f'<div><img src="{preview}" onclick="ampliar(this.src)"><br>{boton}</div>' for preview in previews)}
+            {''.join(f"<div><img src='{preview}' onclick='ampliar(this.src)'><br>{boton}</div>" for preview in previews)}
         </div>
         <div id="modal" onclick="cerrar()">
             <img id="modal-img">
@@ -303,7 +303,7 @@ def ver_imagen(codigo):
         </script>
     </body>
     </html>
-    """
+    '''
     return html
 
 @app.route('/nuevas_postales')
