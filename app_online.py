@@ -187,6 +187,39 @@ def index():
 def buscar():
     codigo = request.args.get("codigo", "").strip()
     return redirect(f"/view_image/{codigo}")
+def generar_postales_multiples(imagen_bytes, codigo):
+    plantillas_dir = os.path.join(BASE, "static", "plantillas_postal")
+    salida_urls = []
+
+    if not os.path.exists(plantillas_dir):
+        print("❌ No se encontró la carpeta de plantillas")
+        return []
+
+    try:
+        for plantilla_nombre in os.listdir(plantillas_dir):
+            if plantilla_nombre.endswith(".jpg"):
+                plantilla_path = os.path.join(plantillas_dir, plantilla_nombre)
+                base = Image.open(plantilla_path).convert("RGB")
+                foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
+                foto = foto.resize((430, 330))
+                base.paste(foto, (90, 95))
+
+                salida = BytesIO()
+                base.save(salida, format='JPEG')
+                salida.seek(0)
+
+                filename = f"{codigo}_{plantilla_nombre}"
+                output_path = os.path.join(BASE, "static", "postales_generadas", filename)
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                with open(output_path, "wb") as f:
+                    f.write(salida.read())
+
+                salida_urls.append(f"/static/postales_generadas/{filename}")
+
+    except Exception as e:
+        print("❌ Error generando múltiples postales:", e)
+
+    return salida_urls
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
@@ -206,7 +239,7 @@ def subir_postal():
     if len(imagen_bytes) < 100:
         return "Imagen vacía", 400
 
-    salida_jpg, ruta_pdf = generar_postal_bytes(imagen_bytes, codigo)
+    postales_urls = generar_postales_multiples(imagen_bytes, codigo)
     generar_preview_camisetas(imagen_bytes, codigo)
 
     if ruta_pdf and os.path.exists(ruta_pdf):
@@ -240,21 +273,22 @@ def subir_postal():
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
-    shopify_url = data.get("shopify", "")
-    boton = f'<a class="shopify-button" href="{shopify_url}" target="_blank">Comprar</a>' if shopify_url else '<p style="color:gray;">Producto no disponible</p>'
+    TIENDA = "corbus"
+    shopify_url = f"https://{TIENDA}.myshopify.com/products/postal-{codigo}"
+    boton = f'<a class="shopify-button" href="{shopify_url}" target="_blank">Comprar</a>'
 
-    previews = []
-    base_path = os.path.join(BASE, "static", "previews")
-    if os.path.exists(base_path):
-        for file in os.listdir(base_path):
-            if file.startswith(f"preview_camiseta_{codigo}"):
-                previews.append(f"/static/previews/{file}")
+    postales_path = os.path.join(BASE, "static", "postales_generadas")
+    postales_multiples = []
+    if os.path.exists(postales_path):
+        for file in os.listdir(postales_path):
+            if file.startswith(codigo):
+                postales_multiples.append(f"/static/postales_generadas/{file}")
 
     html = f'''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Vista de postal y camisetas</title>
+        <title>Vista de postal</title>
         <style>
             body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
             img {{ max-width: 280px; margin: 10px; cursor: pointer; border: 2px solid white; border-radius: 8px; }}
@@ -279,11 +313,7 @@ def ver_imagen(codigo):
                 <img src="{data.get('imagen', '')}" onclick="ampliar(this.src)">
                 <br>{boton}
             </div>
-            <div>
-                <img src="{data.get('postal', '')}" onclick="ampliar(this.src)">
-                <br>{boton}
-            </div>
-            {''.join(f'<div><img src="{preview}" onclick="ampliar(this.src)"><br>{boton}</div>' for preview in previews)}
+            {''.join(f'<div><img src="{url}" onclick="ampliar(this.src)"><br>{boton}</div>' for url in postales_multiples)}
         </div>
         <div id="modal" onclick="cerrar()">
             <img id="modal-img">
