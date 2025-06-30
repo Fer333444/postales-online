@@ -39,12 +39,12 @@ def crear_producto_shopify(codigo, imagen_url):
 
     data = {
         "product": {
-            "status": "active",
-            "published_scope": "global",
             "title": f"Camiseta {codigo}",
             "body_html": "<strong>Camiseta personalizada con tu imagen</strong>",
             "vendor": "PostalesOnline",
             "product_type": "Camisetas",
+            "status": "active",
+            "published_scope": "global",
             "images": [{"src": imagen_url}],
             "variants": [{
                 "price": "24.90",
@@ -58,10 +58,14 @@ def crear_producto_shopify(codigo, imagen_url):
     response = requests.post(url_api, json=data, headers=headers)
 
     if response.status_code == 201:
-        handle = response.json()['product']['handle']
-        enlace = f"https://{tienda}.myshopify.com/products/{handle}"
-        print("✅ Producto creado:", enlace)
+        product = response.json()['product']
+        variant_id = product['variants'][0]['id']
+        enlace = f"https://{tienda}.myshopify.com/cart/{variant_id}:1"
+        print("✅ Enlace de compra directa:", enlace)
         return enlace
+    else:
+        print("❌ Error creando producto:", response.status_code, response.text)
+        return None
     else:
         print("❌ Error creando producto:", response.status_code, response.text)
         return None
