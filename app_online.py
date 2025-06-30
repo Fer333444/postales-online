@@ -199,19 +199,58 @@ def index():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Bienvenido</title>
+        <meta charset="UTF-8">
+        <title>Buscar postal</title>
         <style>
-            body { text-align: center; font-family: sans-serif; padding: 60px; background: #111; color: white; }
-            a { background: #2ecc71; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; }
+            video#bg-video {
+                position: fixed;
+                right: 0;
+                bottom: 0;
+                min-width: 100%;
+                min-height: 100%;
+                object-fit: cover;
+                z-index: -1;
+                filter: brightness(0.4);
+            }
+            .contenido {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                text-align: center;
+                background-color: rgba(0, 0, 0, 0.6);
+                padding: 40px;
+                border-radius: 15px;
+            }
+            input, button {
+                padding: 10px;
+                font-size: 16px;
+                margin-top: 10px;
+            }
         </style>
     </head>
     <body>
-        <h1>👋 Bienvenido a Postales Online</h1>
-        <p>Sube una imagen desde tu app para ver las postales generadas.</p>
-        <a href="/view_image/ejemplo123">Ver ejemplo</a>
+        <video autoplay muted loop playsinline id="bg-video">
+            <source src="/static/douro_sunset.mp4" type="video/mp4">
+        </video>
+        <div class="contenido">
+            <h2>Buscar postal</h2>
+            <form action="/search" method="get">
+                <input type="text" name="codigo" placeholder="Ej: abc123" required />
+                <br>
+                <button type="submit">Buscar postal</button>
+            </form>
+        </div>
     </body>
     </html>
     '''
+
+@app.route('/search')
+def buscar():
+    codigo = request.args.get("codigo", "").strip()
+    return redirect(f"/view_image/{codigo}")
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
