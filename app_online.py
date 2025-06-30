@@ -143,7 +143,7 @@ def enviar_postal():
 def checkout():
     codigo = request.form.get("codigo")
     email = request.form.get("email")
-    postal = request.form.get("postal")  # 🆕 nombre del archivo seleccionado
+    postal = request.form.get("postal")  # nombre del archivo seleccionado
 
     if not codigo or not email or not postal:
         return "Faltan datos para crear el pago", 400
@@ -153,7 +153,7 @@ def checkout():
             customer_email=email,
             metadata={
                 "codigo": codigo,
-                "postal": postal  # 🆕 se guarda cuál postal fue seleccionada
+                "postal": postal
             },
             payment_method_types=["card"],
             line_items=[{
@@ -162,12 +162,12 @@ def checkout():
                     "product_data": {
                         "name": f"Postal personalizada ({codigo})"
                     },
-                    "unit_amount": 300
+                    "unit_amount": 300  # Precio en céntimos (3.00€)
                 },
                 "quantity": 1
             }],
             mode="payment",
-            success_url=f"https://postales-online.onrender.com/success?codigo={codigo}",
+            success_url=f"https://postales-online.onrender.com/success?codigo={codigo}&postal={postal}",
             cancel_url="https://postales-online.onrender.com/cancel"
         )
         return redirect(session.url, code=303)
@@ -198,11 +198,44 @@ def webhook_stripe():
 @app.route('/success')
 def success():
     codigo = request.args.get("codigo", "")
+    postal = request.args.get("postal", "")  # postal seleccionada
+
+    if not postal:
+        return f'''
+        <h2>✅ ¡Pago exitoso!</h2>
+        <p>Tu postal ha sido procesada, pero no se pudo identificar el archivo.</p>
+        <a href="/">Volver al inicio</a>
+        '''
+
+    enlace = f"/static/postales_generadas/{postal}"
+
     return f'''
-    <h2>✅ ¡Pago exitoso!</h2>
-    <p>Tu postal con código <strong>{codigo}</strong> ha sido procesada.</p>
-    <p>Revisa tu correo para descargarla.</p>
-    <p><a href="/">Volver al inicio</a></p>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Postal lista para descargar</title>
+        <style>
+            body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
+            .descargar {{
+                background-color: #2ecc71;
+                color: white;
+                padding: 12px 25px;
+                border-radius: 6px;
+                text-decoration: none;
+                font-size: 18px;
+                display: inline-block;
+                margin-top: 20px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h2>✅ ¡Pago exitoso!</h2>
+        <p>Tu postal con código <strong>{codigo}</strong> ha sido procesada.</p>
+        <img src="{enlace}" style="max-width:300px; border:2px solid white; border-radius:8px;"><br>
+        <a class="descargar" href="{enlace}" download>⬇️ Descargar postal</a>
+        <p><a href="/">Volver al inicio</a></p>
+    </body>
+    </html>
     '''
 
 @app.route('/cancel')
