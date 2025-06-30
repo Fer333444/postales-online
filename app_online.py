@@ -83,7 +83,7 @@ def index():
         </style>
     </head>
     <body>
-        <video autoplay muted loop id="bg-video">
+        <video autoplay muted loop playsinline id="bg-video">
             <source src='/static/douro_sunset.mp4' type='video/mp4'>
             Tu navegador no soporta videos HTML5.
         </video>
