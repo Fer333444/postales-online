@@ -25,7 +25,6 @@ URLS_FILE = os.path.join(BASE, "urls_cloudinary.json")
 SUMATRA = os.path.join(BASE, "SumatraPDF.exe")
 cola_postales = []
 urls_cloudinary = {}
-productos_shopify = {}
 
 if os.path.exists(URLS_FILE):
     with open(URLS_FILE) as f:
@@ -132,7 +131,13 @@ def crear_producto_shopify(codigo, ruta_imagen_local):
         handle = response.json()['product']['handle']
         enlace = f"https://{tienda}.myshopify.com/products/{handle}"
         print("✅ Producto creado:", enlace)
-        productos_shopify[codigo] = enlace
+        if codigo in urls_cloudinary:
+            urls_cloudinary[codigo]['shopify'] = enlace
+        else:
+            urls_cloudinary[codigo] = {'shopify': enlace}
+
+        with open(URLS_FILE, "w") as f:
+            json.dump(urls_cloudinary, f)
         return enlace
     else:
         print("❌ Error creando producto:", response.status_code, response.text)
@@ -194,7 +199,7 @@ def subir_postal():
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
-    shopify_url = productos_shopify.get(codigo, "")
+    shopify_url = data.get("shopify", "")
     return render_template_string(f"""
     <!DOCTYPE html>
     <html>
