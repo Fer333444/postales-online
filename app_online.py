@@ -103,6 +103,23 @@ def subir_postal():
     if codigo not in cola_postales:
         cola_postales.append(codigo)
     return redirect(f"/checkout?codigo={codigo}")
+@app.route('/enviar_postal', methods=['POST'])
+def enviar_postal():
+    email = request.form.get("email")
+    codigo = request.form.get("codigo")
+
+    if not email or not codigo:
+        return "Faltan datos", 400
+
+    enlace = urls_cloudinary.get(codigo, {}).get("postal")
+    if enlace:
+        enviar_email_profesional(email, enlace)
+        return f'''
+        <h2>✅ Postal enviada a {email}</h2>
+        <p><a href="/">Volver al inicio</a></p>
+        '''
+    else:
+        return f"<h2>⚠️ No se encontró la postal para el código {codigo}</h2>", 404
 
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
