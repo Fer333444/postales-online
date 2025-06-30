@@ -39,6 +39,8 @@ def crear_producto_shopify(codigo, imagen_url):
 
     data = {
         "product": {
+            "status": "active",
+            "published_scope": "global",
             "title": f"Camiseta {codigo}",
             "body_html": "<strong>Camiseta personalizada con tu imagen</strong>",
             "vendor": "PostalesOnline",
