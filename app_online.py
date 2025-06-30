@@ -264,22 +264,9 @@ def ver_imagen(codigo):
         <p><a href="/">Volver al inicio</a></p>
         ''', 404
 
-    # Enlaces de compra
     link_postal = "https://buy.stripe.com/00w3cu64DbCWa1Bbut4ZG01"
-    link_camiseta = "https://www.pattseries.com/products/inclinacion-de-pecho"
+    boton = f'<a class="shopify-button" href="{link_postal}" target="_blank">Comprar postal</a>'
 
-    boton_postal = f'<a class="shopify-button" href="{link_postal}" target="_blank">Comprar postal</a>'
-    boton_camiseta = f'<a class="shopify-button" href="{link_camiseta}" target="_blank">Comprar camiseta</a>'
-
-    # Camisetas generadas
-    previews = []
-    base_previews = os.path.join(BASE, "static", "previews")
-    if os.path.exists(base_previews):
-        for file in os.listdir(base_previews):
-            if file.startswith(f"preview_camiseta_{codigo}"):
-                previews.append(f"/static/previews/{file}")
-
-    # Postales múltiples generadas
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     postales_multiples = []
     if os.path.exists(postales_path):
@@ -291,15 +278,35 @@ def ver_imagen(codigo):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Vista de postal y camisetas</title>
+        <title>Tu postal personalizada</title>
         <style>
-            body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
-            img {{ max-width: 280px; margin: 10px; cursor: pointer; border: 2px solid white; border-radius: 8px; }}
-            .grid {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }}
+            body {{
+                background-color: #111;
+                color: white;
+                text-align: center;
+                font-family: sans-serif;
+            }}
+            .grid {{
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 20px;
+                margin-bottom: 40px;
+            }}
+            img {{
+                max-width: 280px;
+                border: 2px solid white;
+                border-radius: 8px;
+            }}
             .shopify-button {{
-                background-color: #2ecc71; color: white; padding: 10px 20px;
-                margin: 5px auto; border: none; border-radius: 5px;
-                text-decoration: none; display: inline-block;
+                background-color: #2ecc71;
+                color: white;
+                padding: 10px 20px;
+                margin: 10px 0;
+                border: none;
+                border-radius: 5px;
+                text-decoration: none;
+                display: inline-block;
             }}
         </style>
     </head>
@@ -307,17 +314,25 @@ def ver_imagen(codigo):
         <h2>📸 Tu postal personalizada</h2>
         <div class="grid">
             <div>
-                <img src="{data.get('imagen', '')}">
-                <br>{boton_postal}
+                <img src="{data.get('imagen', '')}" alt="Postal original"><br>{boton}
             </div>
-            {''.join(f'<div><img src="{url}"><br>{boton_postal}</div>' for url in postales_multiples)}
-            {''.join(f'<div><img src="{preview}"><br>{boton_camiseta}</div>' for preview in previews)}
+            {''.join(f'<div><img src="{url}" alt="Estilo"><br>{boton}</div>' for url in postales_multiples)}
+        </div>
+
+        <div>
+            <h3>📩 Envíatela por correo</h3>
+            <form action="/enviar_postal" method="POST">
+                <input type="hidden" name="codigo" value="{codigo}">
+                <input type="email" name="email" placeholder="Tu correo electrónico" required
+                       style="padding: 10px; font-size: 16px; border-radius: 5px;">
+                <br>
+                <button type="submit" class="shopify-button" style="margin-top: 10px;">Enviar postal por correo</button>
+            </form>
         </div>
     </body>
     </html>
     '''
     return html
-
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
