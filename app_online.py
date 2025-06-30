@@ -225,6 +225,7 @@ def generar_postales_multiples(imagen_bytes, codigo):
 def subir_postal():
     codigo = request.form.get("codigo")
     archivo = request.files.get("imagen")
+
     if not codigo or not archivo:
         return "❌ Código o imagen faltante", 400
 
@@ -237,34 +238,26 @@ def subir_postal():
         return "❌ Imagen inválida o corrupta", 502
 
     if len(imagen_bytes) < 100:
-        return "Imagen vacía", 400
+        return "❌ Imagen vacía", 400
 
     postales_urls = generar_postales_multiples(imagen_bytes, codigo)
-    generar_preview_camisetas(imagen_bytes, codigo)
-
-    if ruta_pdf and os.path.exists(ruta_pdf):
-        with open(ruta_pdf, "rb") as f:
-            imprimir_postal_bytes(BytesIO(f.read()), codigo)
 
     timestamp = int(time.time())
     try:
         r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
-        r2 = cloudinary.uploader.upload(salida_jpg, public_id=f"postal/{codigo}_{timestamp}_postal", overwrite=True)
 
         urls_cloudinary[codigo] = {
             "imagen": r1['secure_url'],
-            "postal": r2['secure_url']
+            "postales": postales_urls
         }
-
-        enlace_shopify = crear_producto_shopify(codigo, r2['secure_url'])
-        urls_cloudinary[codigo]['shopify'] = enlace_shopify
 
         with open(URLS_FILE, "w") as f:
             json.dump(urls_cloudinary, f)
 
     except Exception as e:
-    print(f"❌ Error en subida: {e}")
-    return f"Subida fallida: {str(e)}", 500
+        print(f"❌ Error en subida: {e}")
+        return f"Subida fallida: {str(e)}", 500
+
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
