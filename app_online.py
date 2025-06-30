@@ -69,6 +69,45 @@ def crear_producto_shopify(codigo, imagen_url):
     else:
         print("❌ Error creando producto:", response.status_code, response.text)
         return None
+def crear_producto_shopify(codigo, imagen_url):
+    access_token = os.getenv("SHOPIFY_TOKEN")
+    tienda = "corbus"
+    url_api = f"https://{tienda}.myshopify.com/admin/api/2023-10/products.json"
+
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "product": {
+            "title": f"Camiseta {codigo}",
+            "body_html": "<strong>Camiseta personalizada con tu imagen</strong>",
+            "vendor": "PostalesOnline",
+            "product_type": "Camisetas",
+            "status": "active",
+            "published_scope": "global",
+            "images": [{"src": imagen_url}],
+            "variants": [{
+                "price": "24.90",
+                "sku": f"camiseta-{codigo}",
+                "inventory_management": "shopify",
+                "inventory_quantity": 1
+            }]
+        }
+    }
+
+    response = requests.post(url_api, json=data, headers=headers)
+
+    if response.status_code == 201:
+        product = response.json()['product']
+        variant_id = product['variants'][0]['id']
+        enlace = f"https://{tienda}.myshopify.com/cart/{variant_id}:1"
+        print("✅ Enlace de compra directa:", enlace)
+        return enlace
+    else:
+        print("❌ Error creando producto:", response.status_code, response.text)
+        return None
 
 def imprimir_postal_bytes(pdf_bytes, codigo):
     try:
