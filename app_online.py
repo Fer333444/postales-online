@@ -183,13 +183,16 @@ def webhook_stripe():
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
         return f"Webhook inválido: {e}", 400
+
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         email = session.get('customer_email')
-        codigo = session['metadata'].get('codigo')
-        enlace = urls_cloudinary.get(codigo, {}).get('postal')
-        if email and enlace:
+        postal_filename = session['metadata'].get('postal')  # ✅ la postal seleccionada
+
+        if email and postal_filename:
+            enlace = f"https://postales-online.onrender.com/static/postales_generadas/{postal_filename}"
             enviar_email_profesional(email, enlace)
+
     return '', 200
 
 @app.route('/success')
