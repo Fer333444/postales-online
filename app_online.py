@@ -31,13 +31,74 @@ if os.path.exists(URLS_FILE):
 @app.route('/')
 def index():
     return render_template_string("""
-    <h2>Buscar postal</h2>
-    <form action="/search" method="get">
-        <input type="text" name="codigo" placeholder="Ej: abc123" required />
-        <button type="submit">Buscar postal</button>
-    </form>
-    """)
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Buscar postal</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
 
+            body, html {
+                height: 100%;
+                font-family: Arial, sans-serif;
+            }
+
+            video#bg-video {
+                position: fixed;
+                right: 0;
+                bottom: 0;
+                min-width: 100%;
+                min-height: 100%;
+                object-fit: cover;
+                z-index: -1;
+                filter: brightness(0.4);
+            }
+
+            .contenido {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                text-align: center;
+                background-color: rgba(0, 0, 0, 0.6);
+                padding: 40px;
+                border-radius: 15px;
+            }
+
+            input, button {
+                padding: 10px;
+                font-size: 16px;
+                margin-top: 10px;
+            }
+
+            h2 {
+                margin-bottom: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <video autoplay muted loop id="bg-video">
+            <source src='/static/douro_sunset.mp4' type='video/mp4'>
+            Tu navegador no soporta videos HTML5.
+        </video>
+
+        <div class="contenido">
+            <h2>Buscar postal</h2>
+            <form action="/search" method="get">
+                <input type="text" name="codigo" placeholder="Ej: abc123" required />
+                <br>
+                <button type="submit">Buscar postal</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    """)
 @app.route('/search')
 def buscar():
     codigo = request.args.get("codigo", "").strip()
