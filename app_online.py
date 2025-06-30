@@ -162,7 +162,7 @@ def checkout():
                     "product_data": {
                         "name": f"Postal personalizada ({codigo})"
                     },
-                    "unit_amount": 300  # Precio en céntimos (3.00€)
+                    "unit_amount": 300  # Precio en céntimos (5.00€)
                 },
                 "quantity": 1
             }],
