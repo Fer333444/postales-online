@@ -77,32 +77,50 @@ def enviar_email_profesional(destinatario, enlace):
 def subir_postal():
     codigo = request.form.get("codigo")
     archivo = request.files.get("imagen")
+
     if not codigo or not archivo:
         return "❌ Código o imagen faltante", 400
+
     imagen_bytes = archivo.read()
+
     try:
         test_image = Image.open(BytesIO(imagen_bytes))
         test_image.verify()
     except UnidentifiedImageError:
         return "❌ Imagen inválida o corrupta", 502
+
     if len(imagen_bytes) < 100:
         return "❌ Imagen vacía", 400
+
     postales_urls = generar_postales_multiples(imagen_bytes, codigo)
+
     timestamp = int(time.time())
     try:
-        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
+        # Subida original a Cloudinary
+        r1 = cloudinary.uploader.upload(
+            BytesIO(imagen_bytes),
+            public_id=f"postal/{codigo}_{timestamp}_original",
+            overwrite=True
+        )
+
+        # Guarda en el diccionario
         urls_cloudinary[codigo] = {
             "imagen": r1['secure_url'],
             "postal": postales_urls[0] if postales_urls else ""
         }
-        with open("urls_cloudinary.json", "w") as f:
+
+        # Actualiza archivo
+        with open(URLS_FILE, "w") as f:
             json.dump(urls_cloudinary, f)
+
     except Exception as e:
-        print(f"❌ Error en subida: {e}")
+        print(f"❌ Error subiendo a Cloudinary: {e}")
         return f"Subida fallida: {str(e)}", 500
+
     if codigo not in cola_postales:
         cola_postales.append(codigo)
-    return redirect(f"/checkout?codigo={codigo}")
+
+    return redirect(f"/view_image/{codigo}")
 @app.route('/enviar_postal', methods=['POST'])
 def enviar_postal():
     email = request.form.get("email")
