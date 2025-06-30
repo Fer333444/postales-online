@@ -10,14 +10,12 @@ from io import BytesIO
 import cloudinary
 import cloudinary.uploader
 
-# CONFIGURACIÓN CLOUDINARY
 cloudinary.config(
     cloud_name='dlcbxtcin',
     api_key='453723362245378',
     api_secret='Fn3h6rp_oG6lvaDRk7i6Dil1oQw'
 )
 
-# FLASK APP
 app = Flask(__name__)
 BASE = os.path.dirname(os.path.abspath(__file__))
 URLS_FILE = os.path.join(BASE, "urls_cloudinary.json")
@@ -29,7 +27,6 @@ if os.path.exists(URLS_FILE):
     with open(URLS_FILE) as f:
         urls_cloudinary = json.load(f)
 
-# CREAR PRODUCTO EN SHOPIFY
 def crear_producto_shopify(codigo, imagen_url):
     access_token = os.getenv("SHOPIFY_TOKEN")
     tienda = "corbus"
@@ -67,7 +64,6 @@ def crear_producto_shopify(codigo, imagen_url):
         print("❌ Error creando producto:", response.status_code, response.text)
         return None
 
-# FUNCIONES GENERALES
 def imprimir_postal_bytes(pdf_bytes, codigo):
     try:
         temp_pdf = os.path.join(BASE, f"temp_{codigo}.pdf")
@@ -132,7 +128,6 @@ def generar_preview_camisetas(imagen_bytes, codigo):
 
     return rutas
 
-# RUTAS
 @app.route('/')
 def index():
     return render_template_string("""
@@ -243,8 +238,8 @@ def subir_postal():
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo, {})
-    shopify_url = data.get("shopify", "")
-    boton = f'<a class="shopify-button" href="{shopify_url}" target="_blank">Comprar</a>' if shopify_url else '<p style="color:gray;">Producto no disponible</p>'
+    shopify_url = f"https://corbus.myshopify.com/products/camiseta-{codigo}"
+    boton = f'<a class="shopify-button" href="{shopify_url}" target="_blank">Comprar</a>'
     previews = []
     base_path = os.path.join(BASE, "static", "previews")
     if os.path.exists(base_path):
