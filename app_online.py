@@ -121,45 +121,37 @@ def enviar_postal():
     else:
         return f"<h2>⚠️ No se encontró la postal para el código {codigo}</h2>", 404
 
-@app.route('/checkout', methods=['GET', 'POST'])
+@app.route('/checkout', methods=['POST'])
 def checkout():
-    if request.method == 'GET':
-        codigo = request.args.get("codigo")
-        return f'''
-        <form action="/checkout" method="POST">
-            <input type="hidden" name="codigo" value="{codigo}" />
-            <input type="email" name="email" placeholder="Tu correo" required />
-            <button type="submit">Pagar con Stripe (Apple Pay incluido)</button>
-        </form>
-        '''
-    else:
-        codigo = request.form.get("codigo")
-        email = request.form.get("email")
-        if not codigo or not email:
-            return "Código o email faltante", 400
-        try:
-            session = stripe.checkout.Session.create(
-                customer_email=email,
-                payment_method_types=["card"],
-                line_items=[{
-                    "price_data": {
-                        "currency": "eur",
-                        "product_data": {
-                            "name": f"Postal personalizada ({codigo})"
-                        },
-                        "unit_amount": 300
-                    },
-                    "quantity": 1
-                }],
-                mode="payment",
-                success_url=f"/success?codigo={codigo}",
-                cancel_url="/cancel",
-                metadata={"codigo": codigo}
-            )
-            return redirect(session.url, code=303)
-        except Exception as e:
-            return f"Error en checkout: {e}", 500
+    codigo = request.form.get("codigo")
+    email = request.form.get("email")
 
+    if not codigo or not email:
+        return "Faltan datos", 400
+
+    try:
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            metadata={"codigo": codigo},
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": f"Postal personalizada ({codigo})"
+                    },
+                    "unit_amount": 300
+                },
+                "quantity": 1
+            }],
+            mode="payment",
+            success_url=f"/success?codigo={codigo}",
+            cancel_url="/cancel"
+        )
+        return redirect(session.url, code=303)
+
+    except Exception as e:
+        return f"Error creando sesión de pago: {str(e)}", 500
 @app.route('/webhook_stripe', methods=['POST'])
 def webhook_stripe():
     payload = request.data
@@ -264,9 +256,6 @@ def ver_imagen(codigo):
         <p><a href="/">Volver al inicio</a></p>
         ''', 404
 
-    link_postal = "https://buy.stripe.com/00w3cu64DbCWa1Bbut4ZG01"
-    boton = f'<a class="shopify-button" href="{link_postal}" target="_blank">Comprar postal</a>'
-
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     postales_multiples = []
     if os.path.exists(postales_path):
@@ -308,25 +297,31 @@ def ver_imagen(codigo):
                 text-decoration: none;
                 display: inline-block;
             }}
+            input[type="email"] {{
+                padding: 10px;
+                font-size: 16px;
+                margin-top: 10px;
+                border-radius: 5px;
+                border: none;
+            }}
         </style>
     </head>
     <body>
         <h2>📸 Tu postal personalizada</h2>
         <div class="grid">
             <div>
-                <img src="{data.get('imagen', '')}" alt="Postal original"><br>{boton}
+                <img src="{data.get('imagen', '')}" alt="Postal original"><br>
             </div>
-            {''.join(f'<div><img src="{url}" alt="Estilo"><br>{boton}</div>' for url in postales_multiples)}
+            {''.join(f'<div><img src="{url}" alt="Estilo"><br></div>' for url in postales_multiples)}
         </div>
 
         <div>
-            <h3>📩 Envíatela por correo</h3>
-            <form action="/enviar_postal" method="POST">
+            <h3>💌 Recibe tu postal por email tras el pago</h3>
+            <form action="/checkout" method="POST">
                 <input type="hidden" name="codigo" value="{codigo}">
-                <input type="email" name="email" placeholder="Tu correo electrónico" required
-                       style="padding: 10px; font-size: 16px; border-radius: 5px;">
+                <input type="email" name="email" placeholder="Tu correo electrónico" required>
                 <br>
-                <button type="submit" class="shopify-button" style="margin-top: 10px;">Enviar postal por correo</button>
+                <button type="submit" class="shopify-button">💳 Pagar y recibir postal</button>
             </form>
         </div>
     </body>
