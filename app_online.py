@@ -1,17 +1,12 @@
-
-# ✅ Versión mejorada de la app con diseño adaptable (responsive) para móviles y escritorio
-
-# Versión corregida con indentación arreglada para evitar errores
 import os
 import json
 import time
-import datetime
-from flask import Flask, request, redirect, render_template_string
+import requests
+from flask import Flask, request, jsonify, redirect
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 import cloudinary
 import cloudinary.uploader
-import stripe
 
 cloudinary.config(
     cloud_name='dlcbxtcin',
@@ -20,43 +15,199 @@ cloudinary.config(
 )
 
 app = Flask(__name__)
-
 BASE = os.path.dirname(os.path.abspath(__file__))
 URLS_FILE = os.path.join(BASE, "urls_cloudinary.json")
-PEDIDOS_FILE = os.path.join(BASE, "pedidos.json")
+cola_postales = []
 urls_cloudinary = {}
-
-os.makedirs(os.path.join(BASE, "static"), exist_ok=True)
-os.makedirs(os.path.join(BASE, "static", "postales_generadas"), exist_ok=True)
 
 if os.path.exists(URLS_FILE):
     with open(URLS_FILE) as f:
         urls_cloudinary = json.load(f)
 
-def guardar_pedido(pedido):
-    pedidos = []
-    if os.path.exists(PEDIDOS_FILE):
-        with open(PEDIDOS_FILE) as f:
-            pedidos = json.load(f)
-    pedidos.append(pedido)
-    with open(PEDIDOS_FILE, "w") as f:
-        json.dump(pedidos, f, indent=2)
+def generar_postales_multiples(imagen_bytes, codigo):
+    plantillas_dir = os.path.join(BASE, "static", "plantillas_postal")
+    salida_urls = []
 
+    if not os.path.exists(plantillas_dir):
+        print("❌ No se encontró la carpeta de plantillas")
+        return []
+
+    try:
+        for plantilla_nombre in os.listdir(plantillas_dir):
+            if plantilla_nombre.endswith(".jpg"):
+                plantilla_path = os.path.join(plantillas_dir, plantilla_nombre)
+                base = Image.open(plantilla_path).convert("RGB")
+                foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
+                foto = foto.resize((430, 330))
+                base.paste(foto, (90, 95))
+
+                salida = BytesIO()
+                base.save(salida, format='JPEG')
+                salida.seek(0)
+
+                filename = f"{codigo}_{plantilla_nombre}"
+                output_path = os.path.join(BASE, "static", "postales_generadas", filename)
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                with open(output_path, "wb") as f:
+                    f.write(salida.read())
+
+                salida_urls.append(f"/static/postales_generadas/{filename}")
+
+    except Exception as e:
+        print("❌ Error generando múltiples postales:", e)
+
+    return salida_urls
+
+def generar_preview_camisetas(imagen_bytes, codigo):
+    rutas = []
+    base_dir = os.path.join(BASE, "static", "previews")
+    os.makedirs(base_dir, exist_ok=True)
+
+    combinaciones = [
+        ("hombre", "blanca", "camiseta_hombre_blanca.jpg"),
+        ("mujer", "negra", "camiseta_mujer_negra.jpg")
+    ]
+
+    for genero, color, plantilla in combinaciones:
+        try:
+            fondo = Image.open(os.path.join(BASE, "static", plantilla)).convert("RGBA")
+            foto = Image.open(BytesIO(imagen_bytes)).resize((220, 220)).convert("RGBA")
+            fondo.paste(foto, (95, 120), foto)
+            salida_path = os.path.join(base_dir, f"preview_camiseta_{codigo}_{genero}_{color}.png")
+            fondo.save(salida_path)
+            rutas.append(salida_path)
+        except Exception as e:
+            print(f"❌ Error generando camiseta {genero}-{color}: {e}")
+
+    return rutas
+
+@app.route('/subir_postal', methods=['POST'])
+def subir_postal():
+    codigo = request.form.get("codigo")
+    archivo = request.files.get("imagen")
+
+    if not codigo or not archivo:
+        return "❌ Código o imagen faltante", 400
+
+    imagen_bytes = archivo.read()
+
+    try:
+        test_image = Image.open(BytesIO(imagen_bytes))
+        test_image.verify()
+    except UnidentifiedImageError:
+        return "❌ Imagen inválida o corrupta", 502
+
+    if len(imagen_bytes) < 100:
+        return "❌ Imagen vacía", 400
+
+    postales_urls = generar_postales_multiples(imagen_bytes, codigo)
+    generar_preview_camisetas(imagen_bytes, codigo)
+
+    timestamp = int(time.time())
+    try:
+        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
+
+        urls_cloudinary[codigo] = {
+            "imagen": r1['secure_url'],
+            "postales": postales_urls
+        }
+
+        with open(URLS_FILE, "w") as f:
+            json.dump(urls_cloudinary, f)
+
+    except Exception as e:
+        print(f"❌ Error en subida: {e}")
+        return f"Subida fallida: {str(e)}", 500
+
+    if codigo not in cola_postales:
+        cola_postales.append(codigo)
+
+    return redirect(f"/view_image/{codigo}")
+
+@app.route('/view_image/<codigo>')
+def ver_imagen(codigo):
+    data = urls_cloudinary.get(codigo, {})
+
+    # Links separados
+    link_postal = "https://buy.stripe.com/00w3cu64DbCWa1Bbut4ZG01"
+    link_camiseta = "https://www.pattseries.com/products/inclinacion-de-pecho"
+
+    # Botones diferentes
+    boton_postal = f'<a class="shopify-button" href="{link_postal}" target="_blank">Comprar</a>'
+    boton_camiseta = f'<a class="shopify-button" href="{link_camiseta}" target="_blank">Comprar</a>'
+
+    previews = []
+    base_previews = os.path.join(BASE, "static", "previews")
+    if os.path.exists(base_previews):
+        for file in os.listdir(base_previews):
+            if file.startswith(f"preview_camiseta_{codigo}"):
+                previews.append(f"/static/previews/{file}")
+
+    postales_path = os.path.join(BASE, "static", "postales_generadas")
+    postales_multiples = []
+    if os.path.exists(postales_path):
+        for file in os.listdir(postales_path):
+            if file.startswith(codigo):
+                postales_multiples.append(f"/static/postales_generadas/{file}")
+
+    html = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Vista de postal y camisetas</title>
+        <style>
+            body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
+            img {{ max-width: 280px; margin: 10px; cursor: pointer; border: 2px solid white; border-radius: 8px; }}
+            .grid {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }}
+            .shopify-button {{
+                background-color: #2ecc71; color: white; padding: 10px 20px;
+                margin: 5px auto; border: none; border-radius: 5px;
+                text-decoration: none; display: inline-block;
+            }}
+            #modal {{
+                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center;
+                z-index: 1000;
+            }}
+            #modal img {{ max-height: 90%; max-width: 90%; }}
+        </style>
+    </head>
+    <body>
+        <h2>📸 Tu postal personalizada</h2>
+        <div class="grid">
+            <div>
+                <img src="{data.get('imagen', '')}" onclick="ampliar(this.src)">
+                <br>{boton_postal}
+            </div>
+            {''.join(f'<div><img src="{url}" onclick="ampliar(this.src)"><br>{boton_postal}</div>' for url in postales_multiples)}
+            {''.join(f'<div><img src="{preview}" onclick="ampliar(this.src)"><br>{boton_camiseta}</div>' for preview in previews)}
+        </div>
+        <div id="modal" onclick="cerrar()">
+            <img id="modal-img">
+        </div>
+        <script>
+            function ampliar(src) {{
+                document.getElementById("modal-img").src = src;
+                document.getElementById("modal").style.display = "flex";
+            }}
+            function cerrar() {{
+                document.getElementById("modal").style.display = "none";
+                document.getElementById("modal-img").src = "";
+            }}
+        </script>
+    </body>
+    </html>
+    '''
+    return html
 @app.route('/')
 def index():
     return '''
     <!DOCTYPE html>
-    <html lang="es">
+    <html>
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Buscar postal</title>
         <style>
-            body, html {
-                margin: 0;
-                padding: 0;
-                font-family: sans-serif;
-            }
             video#bg-video {
                 position: fixed;
                 right: 0;
@@ -77,19 +228,11 @@ def index():
                 background-color: rgba(0, 0, 0, 0.6);
                 padding: 40px;
                 border-radius: 15px;
-                width: 90%;
-                max-width: 400px;
             }
             input, button {
-                padding: 12px;
-                font-size: 18px;
+                padding: 10px;
+                font-size: 16px;
                 margin-top: 10px;
-                border-radius: 8px;
-                border: none;
-                width: 100%;
-            }
-            h2 {
-                margin-bottom: 20px;
             }
         </style>
     </head>
@@ -98,407 +241,21 @@ def index():
             <source src="/static/douro_sunset.mp4" type="video/mp4">
         </video>
         <div class="contenido">
-            <h2>🔍 Buscar tu postal</h2>
-            <form action="/view_image" method="get">
-                <input type="text" name="codigo" placeholder="Ej: abc123" required>
-                <button type="submit">Ver postales</button>
+            <h2>Buscar postal</h2>
+            <form action="/search" method="get">
+                <input type="text" name="codigo" placeholder="Ej: abc123" required />
+                <br>
+                <button type="submit">Buscar postal</button>
             </form>
         </div>
     </body>
     </html>
     '''
 
-@app.route('/view_image')
-def view_image():
+@app.route('/search')
+def buscar():
     codigo = request.args.get("codigo", "").strip()
-
-    postales_path = os.path.join(BASE, "static", "postales_generadas")
-    vinos_path = os.path.join(BASE, "static", "Vinos")
-    archivos = []
-    vinos = []
-
-    if os.path.exists(postales_path):
-        archivos = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
-
-    if os.path.exists(vinos_path):
-        vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
-
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset=\"UTF-8\">
-        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-        <title>Postales y Vinos</title>
-        <style>
-            body {{ background-color: #111; color: white; font-family: sans-serif; margin: 0; padding: 0; }}
-            .grid {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }}
-            img {{ max-width: 100%; height: auto; border-radius: 8px; }}
-            .item {{ background-color: #222; padding: 10px; border-radius: 10px; max-width: 240px; }}
-            .seccion {{ background-color: #222; padding: 20px; border-radius: 10px; margin: 16px auto; width: 90%; max-width: 900px; }}
-            input, select, button {{ padding: 10px; font-size: 16px; margin-top: 10px; width: 100%; border-radius: 5px; border: none; }}
-            button {{ background-color: gold; color: black; font-weight: bold; cursor: pointer; }}
-        </style>
-    </head>
-    <body>
-        <form action=\"/checkout_combined\" method=\"POST\">
-            <input type=\"hidden\" name=\"codigo\" value=\"{codigo}\">
-
-            <div class=\"seccion\">
-                <h2>📸 Selecciona postales</h2>
-                <div class=\"grid\">
-    """
-
-    for img in archivos:
-        html += f"""
-        <div class=\"item\">
-            <img src=\"/static/postales_generadas/{img}\">
-            <label><input type=\"checkbox\" name=\"postal\" value=\"{img}\"> Seleccionar</label>
-        </div>
-        """
-
-    html += """
-                </div>
-            </div>
-            <div class=\"seccion\">
-                <h2>🍷 Selecciona vinos</h2>
-                <div class=\"grid\">
-    """
-
-    for vino in vinos:
-        nombre = vino.replace("_", " ").replace(".jpg", "").replace(".png", "").title()
-        html += f"""
-        <div class=\"item\">
-            <img src=\"/static/Vinos/{vino}\">
-            <p><strong>{nombre}</strong></p>
-            <label><input type=\"checkbox\" name=\"vino\" value=\"{vino}\"> Añadir</label><br>
-            <input type=\"number\" name=\"cantidad_{vino}\" min=\"0\" value=\"0\">
-        </div>
-        """
-
-    html += """
-                </div>
-            </div>
-            <div class=\"seccion\">
-                <h2>📋 Datos del cliente</h2>
-                <input type=\"text\" name=\"nombre\" placeholder=\"Nombre completo\" required>
-                <input type=\"text\" name=\"direccion\" placeholder=\"Dirección completa\" required>
-                <input type=\"text\" name=\"telefono\" placeholder=\"Teléfono\" required>
-                <input type=\"email\" name=\"email\" placeholder=\"Correo electrónico\" required>
-                <button type=\"submit\">💳 Pagar y confirmar pedido</button>
-            </div>
-        </form>
-    </body>
-    </html>
-    """
-
-    return html
-@app.route('/subir_postal', methods=['GET', 'POST'])
-def subir_postal():
-    if request.method == 'GET':
-        return """
-        <h2>Sube tu foto</h2>
-        <form method='POST' enctype='multipart/form-data'>
-            Código: <input name='codigo' required><br>
-            Imagen: <input type='file' name='imagen' accept='image/*' required><br>
-            <button type='submit'>Subir</button>
-        </form>
-        """
-
-    codigo = request.form.get("codigo")
-    archivo = request.files.get("imagen")
-
-    if not codigo or not archivo:
-        return "❌ Código o imagen faltante", 400
-
-    imagen_bytes = archivo.read()
-
-    try:
-        test_image = Image.open(BytesIO(imagen_bytes))
-        test_image.verify()
-    except UnidentifiedImageError:
-        return "❌ Imagen inválida", 502
-    except Exception as e:
-        return f"❌ Error procesando imagen: {str(e)}", 502
-
-    if len(imagen_bytes) < 100:
-        return "❌ Imagen vacía", 400
-
-    timestamp = int(time.time())
-
-    try:
-        print(f"📦 Subiendo imagen con código: {codigo}")
-        r1 = cloudinary.uploader.upload(
-            BytesIO(imagen_bytes),
-            public_id=f"postal/{codigo}_{timestamp}_original",
-            overwrite=True
-        )
-
-        urls_cloudinary[codigo] = {"imagen": r1['secure_url']}
-
-        # Guarda las URLs actualizadas en archivo
-        with open(URLS_FILE, "w") as f:
-            json.dump(urls_cloudinary, f)
-
-        # ✅ Guarda la imagen en disco también (opcional, para mostrarla localmente si deseas)
-        output_path = os.path.join(BASE, "static", "postales_generadas", f"{codigo}_original.jpg")
-        with open(output_path, "wb") as f:
-            f.write(imagen_bytes)
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return f"❌ Subida fallida: {str(e)}", 500
-
-    return redirect(f"/view_image?codigo={codigo}")
-@app.route('/checkout_multiple', methods=['POST'])
-def checkout_multiple():
-    codigo = request.form.get("codigo")
-    email = request.form.get("email")
-    postales = request.form.getlist("postal")
-
-    if not codigo or not email or not postales:
-        return "Faltan datos", 400
-
-    try:
-        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
-        line_items = [
-            {
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {"name": f"Postal {p}"},
-                    "unit_amount": 100
-                },
-                "quantity": 1
-            } for p in postales
-        ]
-
-        session = stripe.checkout.Session.create(
-            customer_email=email,
-            payment_method_types=["card"],
-            line_items=line_items,
-            mode="payment",
-            success_url="https://postales-online.onrender.com/success",
-            cancel_url="https://postales-online.onrender.com/cancel",
-            metadata={
-                "tipo": "postal",
-                "codigo": codigo,
-                "correo": email,
-                "postales": ",".join(postales)
-            }
-        )
-        return redirect(session.url, code=303)
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return f"❌ Error creando checkout: {str(e)}", 500
-@app.route('/checkout_combined', methods=['POST'])
-def checkout_combined():
-    from dotenv import load_dotenv
-    load_dotenv()  # para Render o local
-    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
-    codigo = request.form.get("codigo")
-    email = request.form.get("email")
-    nombre = request.form.get("nombre")
-    direccion = request.form.get("direccion")
-    telefono = request.form.get("telefono")
-
-    postales = request.form.getlist("postal")
-    vinos = request.form.getlist("vino")
-
-    productos = []
-
-    line_items = []
-
-    for p in postales:
-        productos.append({
-            "tipo": "postal",
-            "codigo": codigo,
-            "plantilla": p
-        })
-        line_items.append({
-            "price_data": {
-                "currency": "eur",
-                "product_data": {"name": f"Postal {p}"},
-                "unit_amount": 100
-            },
-            "quantity": 1
-        })
-
-    for v in vinos:
-        cantidad = int(request.form.get(f"cantidad_{v}", 0))
-        if cantidad > 0:
-            productos.append({
-                "tipo": "vino",
-                "producto": v,
-                "cantidad": cantidad
-            })
-            line_items.append({
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {"name": v.replace("_", " ").title()},
-                    "unit_amount": 100
-                },
-                "quantity": cantidad
-            })
-
-    if not line_items:
-        return "Debes seleccionar al menos un producto", 400
-
-    session = stripe.checkout.Session.create(
-        customer_email=email,
-        payment_method_types=["card"],
-        line_items=line_items,
-        mode="payment",
-        success_url="https://postales-online.onrender.com/success",
-        cancel_url="https://postales-online.onrender.com/cancel",
-        metadata={
-            "tipo": "combo",
-            "correo": email,
-            "productos_json": json.dumps(productos),
-            "direccion": direccion,
-            "telefono": telefono,
-            "nombre": nombre
-        }
-    )
-    return redirect(session.url, code=303)
-@app.route('/pedido_vino', methods=['GET', 'POST'])
-def pedido_vino():
-    if request.method == 'GET':
-        return """
-        <h2>🍷 Pedido de Vino</h2>
-        <form method='POST'>
-            Email: <input name='email' type='email' required><br>
-            Producto: <select name='producto'>
-                <option value='vino_tinto'>Vino Tinto</option>
-                <option value='vino_blanco'>Vino Blanco</option>
-            </select><br>
-            Cantidad: <input name='cantidad' type='number' value='1' min='1'><br>
-            <button type='submit'>Pagar Vino</button>
-        </form>
-        """
-    email = request.form.get("email")
-    producto = request.form.get("producto")
-    cantidad = int(request.form.get("cantidad"))
-    precios = {"vino_tinto": 12, "vino_blanco": 10}
-    if producto not in precios:
-        return "Producto inválido"
-    session = stripe.checkout.Session.create(
-        customer_email=email,
-        payment_method_types=["card"],
-        line_items=[{
-            "price_data": {
-                "currency": "eur",
-                "product_data": {"name": producto.replace("_", " ").title()},
-                "unit_amount": precios[producto]
-            },
-            "quantity": cantidad
-        }],
-        mode="payment",
-        success_url="https://postales-online.onrender.com/success",
-        cancel_url="https://postales-online.onrender.com/cancel",
-        metadata={
-            "tipo": "vino",
-            "correo": email,
-            "producto": producto,
-            "cantidad": cantidad
-        }
-    )
-    return redirect(session.url, code=303)
-
-@app.route('/webhook_stripe', methods=['POST'])
-def webhook_stripe():
-    payload = request.data
-    sig_header = request.headers.get('Stripe-Signature')
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except Exception as e:
-        return f"Webhook inválido: {e}", 400
-
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        metadata = session.get("metadata", {})
-
-        try:
-            productos = json.loads(metadata.get("productos_json", "[]"))
-        except:
-            productos = []
-
-        pedido = {
-            "fecha": datetime.datetime.now().isoformat(),
-            "correo": session.get("customer_email"),
-            "tipo_compra": metadata.get("tipo", "combo"),
-            "productos": productos,
-            "direccion": metadata.get("direccion", ""),
-            "telefono": metadata.get("telefono", ""),
-            "comentarios": metadata.get("comentarios", ""),
-            "nombre": metadata.get("nombre", "")
-        }
-
-        guardar_pedido(pedido)
-        print("✅ Pedido guardado correctamente")
-
-    return '', 200
-@app.route('/admin_pedidos')
-def admin_pedidos():
-    token = request.args.get("token")
-    if token != "secreto123":
-        return "Acceso denegado", 403
-
-    if not os.path.exists(PEDIDOS_FILE):
-        return "No hay pedidos"
-
-    try:
-        with open(PEDIDOS_FILE) as f:
-            pedidos = json.load(f)
-    except Exception as e:
-        return f"Error leyendo pedidos: {str(e)}", 500
-
-    html = "<h2>📦 Pedidos registrados</h2><ul>"
-    for p in pedidos:
-        html += f"<li><strong>{p['fecha']}</strong> - {p.get('tipo_compra', 'N/A')} - {p.get('correo', '')}<br>"
-
-        detalles = ""
-        for prod in p.get("productos", []):
-            if prod.get("tipo") == "postal":
-                detalles += f"📸 Postal: {prod.get('plantilla', '')}<br>"
-            elif prod.get("tipo") == "vino":
-                detalles += f"🍷 Vino: {prod.get('producto')} x {prod.get('cantidad')}<br>"
-            elif prod.get("tipo") == "camiseta":
-                detalles += f"👕 Camiseta: {prod.get('modelo')} Talla {prod.get('talla')} x {prod.get('cantidad')}<br>"
-
-        html += detalles
-        html += f"<i>📍 {p.get('direccion', '')} / 📞 {p.get('telefono', '')}</i><br>"
-        html += f"<i>📝 {p.get('comentarios', '')}</i></li><hr>"
-    html += "</ul>"
-    return html
-@app.route('/cancel')
-def cancel():
-    return "<h2>⚠️ Pago cancelado</h2><a href='/'>Volver al inicio</a>"
-@app.route('/success')
-def success():
-    # Intentar mostrar la última postal generada si existe
-    codigo = request.args.get("codigo")
-    if not codigo:
-        return "<h2>✅ Pago exitoso</h2><p>Tu pedido fue procesado correctamente.</p><a href='/'>Volver al inicio</a>"
-
-    postales_path = os.path.join(BASE, "static", "postales_generadas")
-    archivos = [f for f in os.listdir(postales_path) if f.startswith(codigo)] if os.path.exists(postales_path) else []
-
-    html = """
-    <h2>✅ ¡Pago exitoso!</h2>
-    <p>Tu pedido fue procesado correctamente.</p>
-    <h3>📸 Postal seleccionada:</h3>
-    <div style='display:flex; flex-wrap:wrap;'>
-    """
-    for img in archivos:
-        html += f"<div style='margin:10px;'><img src='/static/postales_generadas/{img}' width='250'><br>{img}</div>"
-    html += """</div><br><a href='/'>Volver al inicio</a>"""
-    return html
+    return redirect(f"/view_image/{codigo}")
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
