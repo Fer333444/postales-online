@@ -464,21 +464,24 @@ def admin_pedidos():
     except Exception as e:
         return f"Error leyendo pedidos: {str(e)}", 500
 
-    html = "<h2>📦 Pedidos</h2><ul>"
+    html = "<h2>📦 Pedidos registrados</h2><ul>"
     for p in pedidos:
-        productos_raw = p.get("productos", [])
-        if isinstance(productos_raw, list):
-            productos = ", ".join(productos_raw)
-        else:
-            productos = productos_raw
+        html += f"<li><strong>{p['fecha']}</strong> - {p.get('tipo_compra', 'N/A')} - {p.get('correo', '')}<br>"
 
-        html += f"<li>{p.get('fecha', '⏳')} - {p.get('tipo', 'sin_tipo')} - {p.get('email', 'sin_email')}<br>Productos: {productos}</li><hr>"
+        detalles = ""
+        for prod in p.get("productos", []):
+            if prod.get("tipo") == "postal":
+                detalles += f"📸 Postal: {prod.get('plantilla', '')}<br>"
+            elif prod.get("tipo") == "vino":
+                detalles += f"🍷 Vino: {prod.get('producto')} x {prod.get('cantidad')}<br>"
+            elif prod.get("tipo") == "camiseta":
+                detalles += f"👕 Camiseta: {prod.get('modelo')} Talla {prod.get('talla')} x {prod.get('cantidad')}<br>"
+
+        html += detalles
+        html += f"<i>📍 {p.get('direccion', '')} / 📞 {p.get('telefono', '')}</i><br>"
+        html += f"<i>📝 {p.get('comentarios', '')}</i></li><hr>"
     html += "</ul>"
     return html
-@app.route('/success')
-def success():
-    return "<h2>✅ Pago exitoso</h2><p>Tu pedido fue procesado correctamente.</p><a href='/'>Volver al inicio</a>"
-
 @app.route('/cancel')
 def cancel():
     return "<h2>⚠️ Pago cancelado</h2><a href='/'>Volver al inicio</a>"
