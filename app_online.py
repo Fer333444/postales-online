@@ -120,9 +120,9 @@ def pagar_vino():
 
     vinos = json.loads(vinos_json)
     precios = {
-        "vino_tinto.jpg": 12,
-        "vino_blanco.jpg": 10,
-        "vino_rosado.jpg": 11
+        "vino_tinto.jpg": 1200,
+        "vino_blanco.jpg": 1000,
+        "vino_rosado.jpg": 1100
     }
 
     line_items = []
