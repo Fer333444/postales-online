@@ -287,32 +287,42 @@ def checkout_multiple():
     codigo = request.form.get("codigo")
     email = request.form.get("email")
     postales = request.form.getlist("postal")
+
     if not codigo or not email or not postales:
         return "Faltan datos", 400
-    line_items = [{
-        "price_data": {
-            "currency": "eur",
-            "product_data": {"name": f"Postal {p}"},
-            "unit_amount": 300
-        },
-        "quantity": 1
-    } for p in postales]
-    session = stripe.checkout.Session.create(
-        customer_email=email,
-        payment_method_types=["card"],
-        line_items=line_items,
-        mode="payment",
-        success_url="https://postales-online.onrender.com/success",
-        cancel_url="https://postales-online.onrender.com/cancel",
-        metadata={
-            "tipo": "postal",
-            "codigo": codigo,
-            "correo": email,
-            "postales": ",".join(postales)
-        }
-    )
-    return redirect(session.url, code=303)
 
+    try:
+        line_items = [
+            {
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": f"Postal {p}"},
+                    "unit_amount": 300
+                },
+                "quantity": 1
+            } for p in postales
+        ]
+
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success",
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "tipo": "postal",
+                "codigo": codigo,
+                "correo": email,
+                "postales": ",".join(postales)
+            }
+        )
+        return redirect(session.url, code=303)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"❌ Error creando checkout: {str(e)}", 500
 @app.route('/pedido_vino', methods=['GET', 'POST'])
 def pedido_vino():
     if request.method == 'GET':
