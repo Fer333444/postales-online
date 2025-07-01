@@ -454,13 +454,20 @@ def admin_pedidos():
     token = request.args.get("token")
     if token != "secreto123":
         return "Acceso denegado", 403
+
     if not os.path.exists(PEDIDOS_FILE):
         return "No hay pedidos"
-    with open(PEDIDOS_FILE) as f:
-        pedidos = json.load(f)
+
+    try:
+        with open(PEDIDOS_FILE) as f:
+            pedidos = json.load(f)
+    except Exception as e:
+        return f"Error leyendo pedidos: {str(e)}", 500
+
     html = "<h2>📦 Pedidos</h2><ul>"
     for p in pedidos:
-        html += f"<li>{p['fecha']} - {p['tipo']} - {p['email']}<br>Productos: {', '.join(p['productos'])}</li><hr>"
+        productos = ", ".join(p.get("productos", []))
+        html += f"<li>{p['fecha']} - {p['tipo']} - {p['email']}<br>Productos: {productos}</li><hr>"
     html += "</ul>"
     return html
 
