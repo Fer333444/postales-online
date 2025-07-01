@@ -32,30 +32,54 @@ if os.path.exists(URLS_FILE):
 def generar_postales_multiples(imagen_bytes, codigo):
     plantillas_dir = os.path.join(BASE, "static", "plantillas_postal")
     salida_urls = []
+
     if not os.path.exists(plantillas_dir):
         print("❌ No se encontró la carpeta de plantillas")
         return []
+
     try:
+        # Verifica que la imagen no esté vacía
+        if len(imagen_bytes) < 100:
+            print("⚠️ Imagen vacía o muy pequeña")
+            return []
+
+        foto = None
+        try:
+            foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
+        except UnidentifiedImageError as e:
+            print(f"❌ Imagen no válida: {e}")
+            return []
+
+        foto = foto.resize((430, 330))
+
         for plantilla_nombre in os.listdir(plantillas_dir):
             if plantilla_nombre.endswith(".jpg"):
                 plantilla_path = os.path.join(plantillas_dir, plantilla_nombre)
-                base = Image.open(plantilla_path).convert("RGB")
-                foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
-                foto = foto.resize((430, 330))
-                base.paste(foto, (90, 95))
-                salida = BytesIO()
-                base.save(salida, format='JPEG')
-                salida.seek(0)
-                filename = f"{codigo}_{plantilla_nombre}"
-                output_path = os.path.join(BASE, "static", "postales_generadas", filename)
-                os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                with open(output_path, "wb") as f:
-                    f.write(salida.read())
-                salida_urls.append(f"/static/postales_generadas/{filename}")
-    except Exception as e:
-        print("❌ Error generando múltiples postales:", e)
-    return salida_urls
 
+                try:
+                    base = Image.open(plantilla_path).convert("RGB")
+                    base.paste(foto, (90, 95))
+
+                    salida = BytesIO()
+                    base.save(salida, format='JPEG')
+                    salida.seek(0)
+
+                    filename = f"{codigo}_{plantilla_nombre}"
+                    output_path = os.path.join(BASE, "static", "postales_generadas", filename)
+                    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+                    with open(output_path, "wb") as f:
+                        f.write(salida.read())
+
+                    salida_urls.append(f"/static/postales_generadas/{filename}")
+
+                except Exception as e:
+                    print(f"❌ Error generando postal con plantilla {plantilla_nombre}: {e}")
+
+    except Exception as e:
+        print("❌ Error general generando postales:", e)
+
+    return salida_urls
 @app.route('/view_image/<codigo>')
 def ver_imagen(codigo):
     data = urls_cloudinary.get(codigo)
