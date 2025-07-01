@@ -466,6 +466,60 @@ def admin_pedidos():
 @app.route('/cancel')
 def cancel():
     return "<h2>⚠️ Pago cancelado</h2><a href='/'>Volver al inicio</a>"
+@app.route('/success')
+def success():
+    return '''
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Pago exitoso</title>
+        <style>
+            body {
+                background-color: #111;
+                color: white;
+                font-family: sans-serif;
+                text-align: center;
+                padding: 40px 20px;
+            }
+            .box {
+                background-color: #222;
+                padding: 30px;
+                border-radius: 15px;
+                max-width: 500px;
+                margin: 50px auto;
+                box-shadow: 0 0 10px rgba(255,255,255,0.1);
+            }
+            h1 {
+                color: #2ecc71;
+                font-size: 28px;
+                margin-bottom: 20px;
+            }
+            p {
+                font-size: 18px;
+            }
+            a {
+                display: inline-block;
+                margin-top: 20px;
+                padding: 12px 24px;
+                background-color: gold;
+                color: black;
+                font-weight: bold;
+                border-radius: 8px;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box">
+            <h1>✅ ¡Pago exitoso!</h1>
+            <p>Tu pedido fue procesado correctamente.</p>
+            <a href="/">Volver al inicio</a>
+        </div>
+    </body>
+    </html>
+    '''
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
