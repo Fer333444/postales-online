@@ -466,11 +466,15 @@ def admin_pedidos():
 
     html = "<h2>📦 Pedidos</h2><ul>"
     for p in pedidos:
-        productos = ", ".join(p.get("productos", []))
-        html += f"<li>{p['fecha']} - {p['tipo']} - {p['email']}<br>Productos: {productos}</li><hr>"
+        productos_raw = p.get("productos", [])
+        if isinstance(productos_raw, list):
+            productos = ", ".join(productos_raw)
+        else:
+            productos = productos_raw
+
+        html += f"<li>{p.get('fecha', '⏳')} - {p.get('tipo', 'sin_tipo')} - {p.get('email', 'sin_email')}<br>Productos: {productos}</li><hr>"
     html += "</ul>"
     return html
-
 @app.route('/success')
 def success():
     return "<h2>✅ Pago exitoso</h2><p>Tu pedido fue procesado correctamente.</p><a href='/'>Volver al inicio</a>"
