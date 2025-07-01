@@ -142,49 +142,36 @@ def enviar_postal():
 def pedido_vino():
     if request.method == 'GET':
         return '''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Pedido de Vinos</title>
-            <style>
-                body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 5%; }
-                input, select, textarea { margin: 10px; padding: 10px; border-radius: 5px; width: 300px; }
-                button { padding: 10px 20px; background: #2ecc71; color: white; border: none; border-radius: 5px; }
-            </style>
-        </head>
-        <body>
-            <h2>🍷 Pedido de vinos a domicilio</h2>
-            <form action="/pedido_vino" method="POST">
-                <input name="nombre" placeholder="Nombre completo" required><br>
-                <input name="direccion" placeholder="Dirección completa" required><br>
-                <input name="telefono" placeholder="Teléfono" required><br>
-                <input name="email" type="email" placeholder="Correo electrónico" required><br>
+        <form action="/pedido_vino" method="POST">
+            <h2>🍷 Pedido de vino</h2>
+            <input name="nombre" placeholder="Nombre completo" required><br>
+            <input name="direccion" placeholder="Dirección completa" required><br>
+            <input name="telefono" placeholder="Teléfono" required><br>
+            <input name="email" type="email" placeholder="Correo electrónico" required><br><br>
 
-                <label>Selecciona tus vinos:</label><br>
-                <select name="producto1" required>
-                    <option value="">-- Elige vino --</option>
-                    <option value="vino_tinto">Vino tinto</option>
-                    <option value="vino_blanco">Vino blanco</option>
-                    <option value="vino_rosado">Vino rosado</option>
-                </select>
-                <input name="cantidad1" type="number" min="0" value="0"><br>
+            <label>Producto 1:</label>
+            <select name="producto1">
+                <option value="">-- Seleccionar --</option>
+                <option value="vino_tinto">Vino Tinto</option>
+                <option value="vino_blanco">Vino Blanco</option>
+                <option value="vino_rosado">Vino Rosado</option>
+            </select>
+            <input name="cantidad1" type="number" min="0" value="0"><br>
 
-                <select name="producto2">
-                    <option value="">-- Elige otro vino (opcional) --</option>
-                    <option value="vino_tinto">Vino tinto</option>
-                    <option value="vino_blanco">Vino blanco</option>
-                    <option value="vino_rosado">Vino rosado</option>
-                </select>
-                <input name="cantidad2" type="number" min="0" value="0"><br>
+            <label>Producto 2:</label>
+            <select name="producto2">
+                <option value="">-- Seleccionar --</option>
+                <option value="vino_tinto">Vino Tinto</option>
+                <option value="vino_blanco">Vino Blanco</option>
+                <option value="vino_rosado">Vino Rosado</option>
+            </select>
+            <input name="cantidad2" type="number" min="0" value="0"><br>
 
-                <textarea name="comentarios" placeholder="Comentarios adicionales (opcional)"></textarea><br>
+            <textarea name="comentarios" placeholder="Comentarios (opcional)"></textarea><br>
 
-                <button type="submit">💳 Pagar y enviar pedido</button>
-            </form>
-        </body>
-        </html>
+            <button type="submit">💳 Pagar y hacer pedido</button>
+        </form>
         '''
-
     else:
         nombre = request.form.get("nombre")
         direccion = request.form.get("direccion")
@@ -192,50 +179,46 @@ def pedido_vino():
         email = request.form.get("email")
         comentarios = request.form.get("comentarios", "")
 
-        items = []
         precios = {
-            "vino_tinto": ("Vino Tinto", 1200),   # precios en céntimos
+            "vino_tinto": ("Vino Tinto", 1200),
             "vino_blanco": ("Vino Blanco", 1000),
-            "vino_rosado": ("Vino Rosado", 1100),
+            "vino_rosado": ("Vino Rosado", 1100)
         }
 
+        items = []
         for i in range(1, 3):
-            prod = request.form.get(f"producto{i}")
-            cant = request.form.get(f"cantidad{i}")
-            if prod and cant and prod in precios and int(cant) > 0:
-                nombre_prod, precio_unit = precios[prod]
+            p = request.form.get(f"producto{i}")
+            c = int(request.form.get(f"cantidad{i}", 0))
+            if p and p in precios and c > 0:
+                nombre_prod, precio = precios[p]
                 items.append({
                     "price_data": {
                         "currency": "eur",
                         "product_data": {"name": nombre_prod},
-                        "unit_amount": precio_unit
+                        "unit_amount": precio
                     },
-                    "quantity": int(cant)
+                    "quantity": c
                 })
 
         if not items:
-            return "Debes seleccionar al menos un vino", 400
+            return "⚠️ Debes seleccionar al menos un producto", 400
 
-        try:
-            session = stripe.checkout.Session.create(
-                customer_email=email,
-                payment_method_types=["card"],
-                line_items=items,
-                mode="payment",
-                success_url="https://postales-online.onrender.com/success?tipo=vino",
-                cancel_url="https://postales-online.onrender.com/cancel",
-                metadata={
-                    "nombre": nombre,
-                    "direccion": direccion,
-                    "telefono": telefono,
-                    "comentarios": comentarios
-                }
-            )
-            return redirect(session.url, code=303)
-
-        except Exception as e:
-            return f"Error al crear sesión de pago: {str(e)}", 500
-
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            payment_method_types=["card"],
+            line_items=items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success?tipo=vino",
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "tipo": "vino",
+                "nombre": nombre,
+                "direccion": direccion,
+                "telefono": telefono,
+                "comentarios": comentarios
+            }
+        )
+        return redirect(session.url, code=303)
 @app.route('/checkout', methods=['POST'])
 def checkout():
     codigo = request.form.get("codigo")
