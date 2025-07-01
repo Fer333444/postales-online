@@ -319,6 +319,71 @@ def checkout_multiple():
         import traceback
         traceback.print_exc()
         return f"❌ Error creando checkout: {str(e)}", 500
+@app.route('/checkout_combined', methods=['POST'])
+def checkout_combined():
+    codigo = request.form.get("codigo")
+    email = request.form.get("email")
+    postales = request.form.getlist("postal")
+    vinos = request.form.getlist("vino")
+
+    line_items = []
+
+    # Añadir postales seleccionadas
+    for p in postales:
+        line_items.append({
+            "price_data": {
+                "currency": "eur",
+                "product_data": {"name": f"Postal {p}"},
+                "unit_amount": 300
+            },
+            "quantity": 1
+        })
+
+    # Añadir vinos seleccionados
+    precios = {
+        "vino_tinto.jpg": 1200,
+        "vino_rosado.jpg": 1000
+    }
+
+    for vino in vinos:
+        cantidad = int(request.form.get(f"cantidad_{vino}", 0))
+        if cantidad > 0 and vino in precios:
+            line_items.append({
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": vino.replace("_", " ").replace(".jpg", "").title()},
+                    "unit_amount": precios[vino]
+                },
+                "quantity": cantidad
+            })
+
+    if not line_items:
+        return "⚠️ Debes seleccionar al menos un producto", 400
+
+    try:
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success",
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "tipo": "mixto",
+                "correo": email,
+                "codigo": codigo,
+                "postales": ",".join(postales),
+                "vinos": ",".join(vinos)
+            }
+        )
+        return redirect(session.url, code=303)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"❌ Error en checkout combinado: {str(e)}", 500
 @app.route('/pedido_vino', methods=['GET', 'POST'])
 def pedido_vino():
     if request.method == 'GET':
