@@ -1,8 +1,9 @@
+
 import os
 import json
 import time
 import datetime
-from flask import Flask, request, redirect, render_template_string
+from flask import Flask, request, redirect
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 import cloudinary
@@ -38,46 +39,45 @@ def guardar_pedido(pedido):
 
 @app.route('/')
 def index():
-    return '''
+    return """
     <h2>Bienvenido</h2>
-    <a href="/pedido_vino">Pedir Vino</a><br>
-    <a href="/search">Buscar Postal</a><br>
-    <a href="/subir_postal">Subir Foto</a>
-    '''
+    <a href='/pedido_vino'>Pedir Vino</a><br>
+    <a href='/search'>Buscar Postal</a><br>
+    <a href='/subir_postal'>Subir Foto</a>
+    """
 
 @app.route('/search')
 def buscar():
-    return '''
-    <form action="/view_image" method="get">
-        <input name="codigo" placeholder="Código">
-        <button type="submit">Ver postal</button>
+    return """
+    <form action='/view_image' method='get'>
+        <input name='codigo' placeholder='Código'>
+        <button type='submit'>Ver postal</button>
     </form>
-    '''
+    """
 
 @app.route('/view_image')
 def ver_imagen():
     codigo = request.args.get("codigo")
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     archivos = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
-    html = f'<h2>📸 Tu postal personalizada</h2><form action="/checkout_multiple" method="POST">'
-    html += f'<input type="hidden" name="codigo" value="{codigo}">' 
+    html = f"<h2>📸 Tu postal personalizada</h2><form action='/checkout_multiple' method='POST'>"
+    html += f"<input type='hidden' name='codigo' value='{codigo}'>"
     for img in archivos:
-        html += f'<div><img src="/static/postales_generadas/{img}" width="200"><br><input type="checkbox" name="postal" value="{img}"> Seleccionar</div>'
-    html += '''<br><input type="email" name="email" placeholder="Correo" required>
-               <button type="submit">Pagar</button></form>'''
+        html += f"<div><img src='/static/postales_generadas/{img}' width='200'><br><input type='checkbox' name='postal' value='{img}'> Seleccionar</div>"
+    html += "<br><input type='email' name='email' placeholder='Correo' required><button type='submit'>Pagar</button></form>"
     return html
 
 @app.route('/subir_postal', methods=['GET', 'POST'])
 def subir_postal():
     if request.method == 'GET':
-        return '''
+        return """
         <h2>Sube tu foto</h2>
-        <form method="POST" enctype="multipart/form-data">
-            Código: <input name="codigo" required><br>
-            Imagen: <input type="file" name="imagen" accept="image/*" required><br>
-            <button type="submit">Subir</button>
+        <form method='POST' enctype='multipart/form-data'>
+            Código: <input name='codigo' required><br>
+            Imagen: <input type='file' name='imagen' accept='image/*' required><br>
+            <button type='submit'>Subir</button>
         </form>
-        '''
+        """
     codigo = request.form.get("codigo")
     archivo = request.files.get("imagen")
     if not codigo or not archivo:
@@ -134,18 +134,18 @@ def checkout_multiple():
 @app.route('/pedido_vino', methods=['GET', 'POST'])
 def pedido_vino():
     if request.method == 'GET':
-        return '''
+        return """
         <h2>🍷 Pedido de Vino</h2>
-        <form method="POST">
-            Email: <input name="email" type="email" required><br>
-            Producto: <select name="producto">
-                <option value="vino_tinto">Vino Tinto</option>
-                <option value="vino_blanco">Vino Blanco</option>
+        <form method='POST'>
+            Email: <input name='email' type='email' required><br>
+            Producto: <select name='producto'>
+                <option value='vino_tinto'>Vino Tinto</option>
+                <option value='vino_blanco'>Vino Blanco</option>
             </select><br>
-            Cantidad: <input name="cantidad" type="number" value="1" min="1"><br>
-            <button type="submit">Pagar Vino</button>
+            Cantidad: <input name='cantidad' type='number' value='1' min='1'><br>
+            <button type='submit'>Pagar Vino</button>
         </form>
-        '''
+        """
     email = request.form.get("email")
     producto = request.form.get("producto")
     cantidad = int(request.form.get("cantidad"))
