@@ -1,18 +1,22 @@
 import os
 import json
 import time
-import requests
 from flask import Flask, request, jsonify, redirect
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 import cloudinary
 import cloudinary.uploader
+import stripe
+import sendgrid
+from sendgrid.helpers.mail import Mail
 
+# Configuración
 cloudinary.config(
     cloud_name='dlcbxtcin',
     api_key='453723362245378',
     api_secret='Fn3h6rp_oG6lvaDRk7i6Dil1oQw'
 )
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 app = Flask(__name__)
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -27,11 +31,9 @@ if os.path.exists(URLS_FILE):
 def generar_postales_multiples(imagen_bytes, codigo):
     plantillas_dir = os.path.join(BASE, "static", "plantillas_postal")
     salida_urls = []
-
     if not os.path.exists(plantillas_dir):
         print("❌ No se encontró la carpeta de plantillas")
         return []
-
     try:
         for plantilla_nombre in os.listdir(plantillas_dir):
             if plantilla_nombre.endswith(".jpg"):
@@ -40,46 +42,36 @@ def generar_postales_multiples(imagen_bytes, codigo):
                 foto = Image.open(BytesIO(imagen_bytes)).convert("RGB")
                 foto = foto.resize((430, 330))
                 base.paste(foto, (90, 95))
-
                 salida = BytesIO()
                 base.save(salida, format='JPEG')
                 salida.seek(0)
-
                 filename = f"{codigo}_{plantilla_nombre}"
                 output_path = os.path.join(BASE, "static", "postales_generadas", filename)
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
                 with open(output_path, "wb") as f:
                     f.write(salida.read())
-
                 salida_urls.append(f"/static/postales_generadas/{filename}")
-
     except Exception as e:
         print("❌ Error generando múltiples postales:", e)
-
     return salida_urls
 
-def generar_preview_camisetas(imagen_bytes, codigo):
-    rutas = []
-    base_dir = os.path.join(BASE, "static", "previews")
-    os.makedirs(base_dir, exist_ok=True)
-
-    combinaciones = [
-        ("hombre", "blanca", "camiseta_hombre_blanca.jpg"),
-        ("mujer", "negra", "camiseta_mujer_negra.jpg")
-    ]
-
-    for genero, color, plantilla in combinaciones:
-        try:
-            fondo = Image.open(os.path.join(BASE, "static", plantilla)).convert("RGBA")
-            foto = Image.open(BytesIO(imagen_bytes)).resize((220, 220)).convert("RGBA")
-            fondo.paste(foto, (95, 120), foto)
-            salida_path = os.path.join(base_dir, f"preview_camiseta_{codigo}_{genero}_{color}.png")
-            fondo.save(salida_path)
-            rutas.append(salida_path)
-        except Exception as e:
-            print(f"❌ Error generando camiseta {genero}-{color}: {e}")
-
-    return rutas
+def enviar_email_profesional(destinatario, enlace):
+    sg = sendgrid.SendGridAPIClient(api_key=os.getenv("SENDGRID_API_KEY"))
+    mensaje = Mail(
+        from_email=os.getenv("EMAIL_FROM"),
+        to_emails=destinatario,
+        subject='Tu postal personalizada está lista 📩',
+        html_content=f'''
+        <p>Gracias por tu compra.</p>
+        <p>Haz clic aquí para <a href="{enlace}" target="_blank">descargar tu postal</a>.</p>
+        <p>Saludos,<br>Equipo Postales Online</p>
+        '''
+    )
+    try:
+        response = sg.send(mensaje)
+        print(f"✅ Email enviado a {destinatario} ({response.status_code})")
+    except Exception as e:
+        print(f"❌ Error enviando email: {e}")
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
@@ -101,104 +93,158 @@ def subir_postal():
         return "❌ Imagen vacía", 400
 
     postales_urls = generar_postales_multiples(imagen_bytes, codigo)
-    generar_preview_camisetas(imagen_bytes, codigo)
 
     timestamp = int(time.time())
     try:
-        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
+        # Subida original a Cloudinary
+        r1 = cloudinary.uploader.upload(
+            BytesIO(imagen_bytes),
+            public_id=f"postal/{codigo}_{timestamp}_original",
+            overwrite=True
+        )
 
+        # Guarda en el diccionario
         urls_cloudinary[codigo] = {
             "imagen": r1['secure_url'],
-            "postales": postales_urls
+            "postal": postales_urls[0] if postales_urls else ""
         }
 
+        # Actualiza archivo
         with open(URLS_FILE, "w") as f:
             json.dump(urls_cloudinary, f)
 
     except Exception as e:
-        print(f"❌ Error en subida: {e}")
+        print(f"❌ Error subiendo a Cloudinary: {e}")
         return f"Subida fallida: {str(e)}", 500
 
     if codigo not in cola_postales:
         cola_postales.append(codigo)
 
     return redirect(f"/view_image/{codigo}")
+@app.route('/enviar_postal', methods=['POST'])
+def enviar_postal():
+    email = request.form.get("email")
+    codigo = request.form.get("codigo")
 
-@app.route('/view_image/<codigo>')
-def ver_imagen(codigo):
-    data = urls_cloudinary.get(codigo, {})
+    if not email or not codigo:
+        return "Faltan datos", 400
 
-    # Links separados
-    link_postal = "https://buy.stripe.com/00w3cu64DbCWa1Bbut4ZG01"
-    link_camiseta = "https://www.pattseries.com/products/inclinacion-de-pecho"
+    enlace = urls_cloudinary.get(codigo, {}).get("postal")
+    if enlace:
+        enviar_email_profesional(email, enlace)
+        return f'''
+        <h2>✅ Postal enviada a {email}</h2>
+        <p><a href="/">Volver al inicio</a></p>
+        '''
+    else:
+        return f"<h2>⚠️ No se encontró la postal para el código {codigo}</h2>", 404
 
-    # Botones diferentes
-    boton_postal = f'<a class="shopify-button" href="{link_postal}" target="_blank">Comprar</a>'
-    boton_camiseta = f'<a class="shopify-button" href="{link_camiseta}" target="_blank">Comprar</a>'
+@app.route('/checkout', methods=['POST'])
+def checkout():
+    codigo = request.form.get("codigo")
+    email = request.form.get("email")
+    postal = request.form.get("postal")  # nombre del archivo seleccionado
 
-    previews = []
-    base_previews = os.path.join(BASE, "static", "previews")
-    if os.path.exists(base_previews):
-        for file in os.listdir(base_previews):
-            if file.startswith(f"preview_camiseta_{codigo}"):
-                previews.append(f"/static/previews/{file}")
+    if not codigo or not email or not postal:
+        return "Faltan datos para crear el pago", 400
 
-    postales_path = os.path.join(BASE, "static", "postales_generadas")
-    postales_multiples = []
-    if os.path.exists(postales_path):
-        for file in os.listdir(postales_path):
-            if file.startswith(codigo):
-                postales_multiples.append(f"/static/postales_generadas/{file}")
+    try:
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            metadata={
+                "codigo": codigo,
+                "postal": postal
+            },
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {
+                        "name": f"Postal personalizada ({codigo})"
+                    },
+                    "unit_amount": 300  # Precio en céntimos (3.00€)
+                },
+                "quantity": 1
+            }],
+            mode="payment",
+            success_url=f"https://postales-online.onrender.com/success?codigo={codigo}&postal={postal}",
+            cancel_url="https://postales-online.onrender.com/cancel"
+        )
+        return redirect(session.url, code=303)
 
-    html = f'''
+    except Exception as e:
+        return f"Error creando sesión de pago: {str(e)}", 500
+@app.route('/webhook_stripe', methods=['POST'])
+def webhook_stripe():
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except Exception as e:
+        return f"Webhook inválido: {e}", 400
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        email = session.get('customer_email')
+        postal_filename = session['metadata'].get('postal')  # ✅ la postal seleccionada
+
+        if email and postal_filename:
+            enlace = f"https://postales-online.onrender.com/static/postales_generadas/{postal_filename}"
+            enviar_email_profesional(email, enlace)
+
+    return '', 200
+
+@app.route('/success')
+def success():
+    codigo = request.args.get("codigo", "")
+    postal = request.args.get("postal", "")  # postal seleccionada
+
+    if not postal:
+        return f'''
+        <h2>✅ ¡Pago exitoso!</h2>
+        <p>Tu postal ha sido procesada, pero no se pudo identificar el archivo.</p>
+        <a href="/">Volver al inicio</a>
+        '''
+
+    enlace = f"/static/postales_generadas/{postal}"
+
+    return f'''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Vista de postal y camisetas</title>
+        <title>Postal lista para descargar</title>
         <style>
             body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
-            img {{ max-width: 280px; margin: 10px; cursor: pointer; border: 2px solid white; border-radius: 8px; }}
-            .grid {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }}
-            .shopify-button {{
-                background-color: #2ecc71; color: white; padding: 10px 20px;
-                margin: 5px auto; border: none; border-radius: 5px;
-                text-decoration: none; display: inline-block;
+            .descargar {{
+                background-color: #2ecc71;
+                color: white;
+                padding: 12px 25px;
+                border-radius: 6px;
+                text-decoration: none;
+                font-size: 18px;
+                display: inline-block;
+                margin-top: 20px;
             }}
-            #modal {{
-                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center;
-                z-index: 1000;
-            }}
-            #modal img {{ max-height: 90%; max-width: 90%; }}
         </style>
     </head>
     <body>
-        <h2>📸 Tu postal personalizada</h2>
-        <div class="grid">
-            <div>
-                <img src="{data.get('imagen', '')}" onclick="ampliar(this.src)">
-                <br>{boton_postal}
-            </div>
-            {''.join(f'<div><img src="{url}" onclick="ampliar(this.src)"><br>{boton_postal}</div>' for url in postales_multiples)}
-            {''.join(f'<div><img src="{preview}" onclick="ampliar(this.src)"><br>{boton_camiseta}</div>' for preview in previews)}
-        </div>
-        <div id="modal" onclick="cerrar()">
-            <img id="modal-img">
-        </div>
-        <script>
-            function ampliar(src) {{
-                document.getElementById("modal-img").src = src;
-                document.getElementById("modal").style.display = "flex";
-            }}
-            function cerrar() {{
-                document.getElementById("modal").style.display = "none";
-                document.getElementById("modal-img").src = "";
-            }}
-        </script>
+        <h2>✅ ¡Pago exitoso!</h2>
+        <p>Tu postal con código <strong>{codigo}</strong> ha sido procesada.</p>
+        <img src="{enlace}" style="max-width:300px; border:2px solid white; border-radius:8px;"><br>
+        <a class="descargar" href="{enlace}" download>⬇️ Descargar postal</a>
+        <p><a href="/">Volver al inicio</a></p>
     </body>
     </html>
     '''
-    return html
+
+@app.route('/cancel')
+def cancel():
+    return '''
+    <h2>⚠️ Pago cancelado</h2>
+    <p>No se ha realizado ningún cargo.</p>
+    <p><a href="/">Volver al inicio</a></p>
+    '''
 @app.route('/')
 def index():
     return '''
@@ -233,6 +279,8 @@ def index():
                 padding: 10px;
                 font-size: 16px;
                 margin-top: 10px;
+                border-radius: 5px;
+                border: none;
             }
         </style>
     </head>
@@ -241,11 +289,11 @@ def index():
             <source src="/static/douro_sunset.mp4" type="video/mp4">
         </video>
         <div class="contenido">
-            <h2>Buscar postal</h2>
+            <h2>🔍 Buscar tu postal</h2>
             <form action="/search" method="get">
                 <input type="text" name="codigo" placeholder="Ej: abc123" required />
                 <br>
-                <button type="submit">Buscar postal</button>
+                <button type="submit">Ver postal</button>
             </form>
         </div>
     </body>
@@ -257,6 +305,100 @@ def buscar():
     codigo = request.args.get("codigo", "").strip()
     return redirect(f"/view_image/{codigo}")
 
+@app.route('/view_image/<codigo>')
+def ver_imagen(codigo):
+    data = urls_cloudinary.get(codigo)
+    if not data:
+        return f'''
+        <h2>❌ Código <code>{codigo}</code> no encontrado</h2>
+        <p><a href="/">Volver al inicio</a></p>
+        ''', 404
+
+    postales_path = os.path.join(BASE, "static", "postales_generadas")
+    postales_multiples = []
+    if os.path.exists(postales_path):
+        for file in os.listdir(postales_path):
+            if file.startswith(codigo):
+                postales_multiples.append(file)  # solo el nombre
+
+    html = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Tu postal personalizada</title>
+        <style>
+            body {{
+                background-color: #111;
+                color: white;
+                text-align: center;
+                font-family: sans-serif;
+            }}
+            .grid {{
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 20px;
+                margin-bottom: 40px;
+            }}
+            img {{
+                max-width: 280px;
+                border: 2px solid white;
+                border-radius: 8px;
+            }}
+            label {{
+                display: block;
+                margin-top: 10px;
+            }}
+            .shopify-button {{
+                background-color: #2ecc71;
+                color: white;
+                padding: 10px 20px;
+                margin: 10px 0;
+                border: none;
+                border-radius: 5px;
+                text-decoration: none;
+                display: inline-block;
+            }}
+            input[type="email"], select {{
+                padding: 10px;
+                font-size: 16px;
+                border-radius: 5px;
+                margin-top: 10px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h2>📸 Tu postal personalizada</h2>
+        <div class="grid">
+            {''.join(f'<div><img src="/static/postales_generadas/{file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
+        </div>
+
+        <div>
+            <h3>💌 Recibe tu postal seleccionada por email tras el pago</h3>
+            <form action="/checkout" method="POST">
+                <input type="hidden" name="codigo" value="{codigo}">
+                <input type="email" name="email" placeholder="Tu correo electrónico" required><br>
+                <button type="submit" class="shopify-button">💳 Pagar y recibir postal</button>
+            </form>
+        </div>
+
+        <script>
+            const form = document.querySelector("form");
+            form.addEventListener("submit", function(e) {{
+                const selected = document.querySelector("input[name='postal']:checked");
+                if (selected) {{
+                    const input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = "postal";
+                    input.value = selected.value;
+                    form.appendChild(input);
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    '''
+    return html
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
