@@ -445,32 +445,27 @@ def view_image(codigo):
                 gap: 16px;
                 margin-bottom: 30px;
             }}
-            .item {{
-                max-width: 300px;
-                background-color: #222;
-                padding: 10px;
-                border-radius: 10px;
-            }}
             img {{
                 width: 100%;
+                max-width: 220px;
                 height: auto;
                 border: 2px solid white;
                 border-radius: 8px;
             }}
             label {{
                 display: block;
-                margin-top: 10px;
+                margin-top: 8px;
             }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 10px auto;
+                margin: 15px 0;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
-                display: inline-block;
                 font-size: 16px;
+                display: inline-block;
             }}
             input[type="email"], select {{
                 padding: 10px;
@@ -478,17 +473,23 @@ def view_image(codigo):
                 border-radius: 5px;
                 margin-top: 10px;
                 width: 90%;
+                max-width: 300px;
+                border: none;
+            }}
+            .formulario-vino input {{
+                width: 100%;
+                max-width: 350px;
             }}
         </style>
     </head>
     <body>
         <h2>📸 Tu postal personalizada</h2>
         <div class="grid">
-            {''.join(f'<div class="item"><img src="/static/postales_generadas/{file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
+            {''.join(f'<div><img src="/static/postales_generadas/{file}" oncontextmenu="return false;"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
         </div>
 
         <div>
-            <h3>📬 Recibe tu postal seleccionada por email tras el pago</h3>
+            <h3>💌 Recibe tu postal seleccionada por email tras el pago</h3>
             <form action="/checkout" method="POST">
                 <input type="hidden" name="codigo" value="{codigo}">
                 <input type="email" name="email" placeholder="Tu correo electrónico" required><br>
@@ -499,15 +500,15 @@ def view_image(codigo):
         <hr style="margin: 40px 0; border-color: #444">
 
         <h2>🍷 Selecciona vinos</h2>
-        <form method="POST" action="/formulario_vino">
+        <form method="POST" action="/formulario_vino" class="formulario-vino">
             <div class="grid">
     '''
 
     for vino in vinos:
-        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+        nombre = vino.replace(".jpg", "").replace("_", " ").title()
         html += f'''
-                <div class="item">
-                    <img src="/static/Vinos/{vino}">
+                <div>
+                    <img src="/static/Vinos/{vino}" oncontextmenu="return false;">
                     <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
                     <select name="cantidad_{vino}">
                         {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
