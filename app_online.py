@@ -428,46 +428,57 @@ def view_image(codigo):
     <html>
     <head>
         <title>Tu postal personalizada</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-            body {{
-                background-color: #111;
-                color: white;
-                text-align: center;
-                font-family: sans-serif;
+            html, body {{
                 margin: 0;
                 padding: 0;
+                background-color: #111;
+                color: white;
+                font-family: sans-serif;
+                text-align: center;
+                touch-action: manipulation;
+                -webkit-user-select: none;
+                -webkit-touch-callout: none;
+                user-select: none;
             }}
             .grid {{
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: center;
                 gap: 16px;
-                margin-bottom: 30px;
+                margin-bottom: 40px;
+                padding: 10px;
+            }}
+            .postal-wrapper {{
+                background-color: #222;
+                border-radius: 12px;
+                padding: 8px;
+                max-width: 300px;
+                width: 90%;
             }}
             img {{
                 width: 100%;
-                max-width: 220px;
                 height: auto;
-                border: 2px solid white;
-                border-radius: 8px;
+                border-radius: 10px;
+                pointer-events: none;
+                -webkit-user-drag: none;
             }}
             label {{
                 display: block;
-                margin-top: 8px;
+                margin-top: 10px;
             }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 15px 0;
+                margin: 10px 0;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
-                font-size: 16px;
                 display: inline-block;
             }}
-            input[type="email"], select {{
+            input[type="email"], select, input[type="number"] {{
                 padding: 10px;
                 font-size: 16px;
                 border-radius: 5px;
@@ -476,16 +487,13 @@ def view_image(codigo):
                 max-width: 300px;
                 border: none;
             }}
-            .formulario-vino input {{
-                width: 100%;
-                max-width: 350px;
-            }}
+            form {{ margin-bottom: 40px; }}
         </style>
     </head>
-    <body>
+    <body oncontextmenu="return false">
         <h2>📸 Tu postal personalizada</h2>
         <div class="grid">
-            {''.join(f'<div><img src="/static/postales_generadas/{file}" oncontextmenu="return false;"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
+            {''.join(f'<div class="postal-wrapper"><img src="/static/postales_generadas/{file}" alt="postal {file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
         </div>
 
         <div>
@@ -500,15 +508,15 @@ def view_image(codigo):
         <hr style="margin: 40px 0; border-color: #444">
 
         <h2>🍷 Selecciona vinos</h2>
-        <form method="POST" action="/formulario_vino" class="formulario-vino">
+        <form method="POST" action="/formulario_vino">
             <div class="grid">
     '''
 
     for vino in vinos:
-        nombre = vino.replace(".jpg", "").replace("_", " ").title()
+        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
-                <div>
-                    <img src="/static/Vinos/{vino}" oncontextmenu="return false;">
+                <div class="postal-wrapper">
+                    <img src="/static/Vinos/{vino}" alt="vino {nombre}">
                     <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
                     <select name="cantidad_{vino}">
                         {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
