@@ -76,10 +76,18 @@ def enviar_email_profesional(destinatario, enlace):
 @app.route('/formulario_vino', methods=['POST'])
 def formulario_vino():
     vinos_seleccionados = request.form.getlist("vino")
-    cantidades = {vino: int(request.form.get(f"cantidad_{vino}", 0)) for vino in vinos_seleccionados}
+    cantidades = {}
 
-    if not vinos_seleccionados:
-        return "<h2>❌ No se seleccionaron vinos</h2><a href='/'>Volver</a>", 400
+    for vino in vinos_seleccionados:
+        try:
+            cantidad = int(request.form.get(f"cantidad_{vino}", 0))
+        except ValueError:
+            cantidad = 0
+        if cantidad > 0:
+            cantidades[vino] = cantidad
+
+    if not cantidades:
+        return "<h2>❌ No se seleccionaron vinos válidos</h2><a href='/'>Volver</a>", 400
 
     html = '''
     <!DOCTYPE html>
@@ -111,18 +119,22 @@ def formulario_vino():
 def pagar_vino():
     vinos_json = request.form.get("vinos_json")
     email = request.form.get("email")
-    nombre = request.form.get("nombre")
-    direccion = request.form.get("direccion")
-    telefono = request.form.get("telefono")
+    nombre = request.form.get("nombre", "").strip()
+    direccion = request.form.get("direccion", "").strip()
+    telefono = request.form.get("telefono", "").strip()
 
-    if not vinos_json or not email:
-        return "Faltan datos", 400
+    if not vinos_json or not email or not nombre or not direccion or not telefono:
+        return "<h2>❌ Faltan datos para procesar el pago</h2><a href='/'>Volver</a>", 400
 
-    vinos = json.loads(vinos_json)
+    try:
+        vinos = json.loads(vinos_json)
+    except Exception as e:
+        return f"<h2>❌ Error procesando los vinos: {str(e)}</h2>", 400
+
     precios = {
-        "vino_tinto.jpg": 1200,
-        "vino_blanco.jpg": 1000,
-        "vino_rosado.jpg": 1100
+        "vino_tinto.jpg": 1200,   # 12.00€
+        "vino_blanco.jpg": 1000,  # 10.00€
+        "vino_rosado.jpg": 1100   # 11.00€
     }
 
     line_items = []
@@ -138,25 +150,32 @@ def pagar_vino():
             })
 
     if not line_items:
-        return "No hay vinos válidos para pagar", 400
+        return "<h2>❌ No hay productos válidos</h2><a href='/'>Volver</a>", 400
 
-    session = stripe.checkout.Session.create(
-        customer_email=email,
-        payment_method_types=["card"],
-        line_items=line_items,
-        mode="payment",
-        success_url="https://postales-online.onrender.com/success",
-        cancel_url="https://postales-online.onrender.com/cancel",
-        metadata={
-            "tipo": "vino",
-            "correo": email,
-            "direccion": direccion,
-            "telefono": telefono,
-            "productos_json": json.dumps([{"producto": k, "cantidad": v} for k, v in vinos.items() if v > 0])
-        }
-    )
+    # Crear sesión de Stripe
+    try:
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success",
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "tipo": "vino",
+                "correo": email,
+                "nombre": nombre,
+                "direccion": direccion,
+                "telefono": telefono,
+                "productos_json": json.dumps(
+                    [{"producto": vino, "cantidad": cantidad} for vino, cantidad in vinos.items() if cantidad > 0]
+                )
+            }
+        )
+        return redirect(session.url, code=303)
 
-    return redirect(session.url, code=303)
+    except Exception as e:
+        return f"<h2>❌ Error al crear la sesión de pago: {str(e)}</h2>", 500
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
