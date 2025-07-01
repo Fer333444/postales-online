@@ -117,19 +117,21 @@ def view_image():
     codigo = request.args.get("codigo", "").strip()
 
     postales_path = os.path.join(BASE, "static", "postales_generadas")
+    vinos_path = os.path.join(BASE, "static", "Vinos")
     archivos = []
+    vinos = []
 
     if os.path.exists(postales_path):
         archivos = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
 
-    if not archivos:
-        return f"<h2>❌ No se encontraron postales para el código '{codigo}'</h2><a href='/'>Volver al inicio</a>"
+    if os.path.exists(vinos_path):
+        vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
 
     html = f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Tu postal personalizada</title>
+        <title>Postales y Vinos</title>
         <style>
             body {{
                 background-color: #111;
@@ -142,35 +144,37 @@ def view_image():
                 flex-wrap: wrap;
                 justify-content: center;
                 gap: 20px;
-                margin-bottom: 40px;
+                margin: 20px auto;
             }}
             img {{
-                max-width: 280px;
+                max-width: 240px;
                 border: 2px solid white;
                 border-radius: 8px;
             }}
             .seccion {{
                 background-color: #222;
                 padding: 20px;
-                border-radius: 10px;
                 margin: 30px auto;
-                width: 90%;
-                max-width: 500px;
+                border-radius: 10px;
+                width: 95%;
+                max-width: 900px;
             }}
             input, select, button {{
                 padding: 10px;
                 font-size: 16px;
-                border-radius: 5px;
                 margin: 5px 0;
                 width: 100%;
+                border-radius: 5px;
             }}
         </style>
     </head>
     <body>
-        <h2>📸 Tu postal personalizada</h2>
-        <form action="/checkout_multiple" method="POST">
+        <h1>📸 Tu postal personalizada</h1>
+        <form action="/checkout_combined" method="POST">
             <input type="hidden" name="codigo" value="{codigo}">
-            <div class="grid">
+            <div class="seccion">
+                <h2>Postales generadas</h2>
+                <div class="grid">
     """
 
     for img in archivos:
@@ -182,42 +186,32 @@ def view_image():
         """
 
     html += """
-            </div><br>
-            <input type="email" name="email" placeholder="Tu correo electrónico" required>
-            <br><br>
-            <button type="submit">💳 Pagar y recibir postales</button>
-        </form>
+                </div>
+            </div>
+            <div class="seccion">
+                <h2>🍷 Nuestros vinos</h2>
+                <div class="grid">
+    """
 
-        <div class="seccion">
-            <h3>🍷 Pedir vino a domicilio</h3>
-            <form action="/pedido_vino" method="POST">
-                <input type="text" name="nombre" placeholder="Nombre completo" required><br>
-                <input type="text" name="direccion" placeholder="Dirección completa" required><br>
-                <input type="text" name="telefono" placeholder="Teléfono" required><br>
-                <input type="email" name="email" placeholder="Correo electrónico" required><br><br>
-
-                <label>Producto 1:</label>
-                <select name="producto1">
-                    <option value="">-- Seleccionar --</option>
-                    <option value="vino_tinto">Vino Tinto</option>
-                    <option value="vino_blanco">Vino Blanco</option>
-                    <option value="vino_rosado">Vino Rosado</option>
-                </select>
-                <input name="cantidad1" type="number" min="0" value="0"><br><br>
-
-                <label>Producto 2:</label>
-                <select name="producto2">
-                    <option value="">-- Seleccionar --</option>
-                    <option value="vino_tinto">Vino Tinto</option>
-                    <option value="vino_blanco">Vino Blanco</option>
-                    <option value="vino_rosado">Vino Rosado</option>
-                </select>
-                <input name="cantidad2" type="number" min="0" value="0"><br><br>
-
-                <textarea name="comentarios" placeholder="Comentarios (opcional)" style="width:100%; height:60px;"></textarea><br>
-                <button type="submit">💳 Pagar y pedir vinos</button>
-            </form>
+    for vino in vinos:
+        html += f"""
+        <div>
+            <img src="/static/Vinos/{vino}">
+            <p>{vino.replace("_", " ").replace(".jpg", "").title()}</p>
+            <label>Seleccionar: <input type="checkbox" name="vino" value="{vino}"></label>
+            <input type="number" name="cantidad_{vino}" value="0" min="0">
         </div>
+        """
+
+    html += """
+                </div>
+            </div>
+            <div class="seccion">
+                <h3>💌 Tu correo</h3>
+                <input type="email" name="email" placeholder="Tu correo electrónico" required>
+                <button type="submit">💳 Pagar selección</button>
+            </div>
+        </form>
     </body>
     </html>
     """
