@@ -16,14 +16,19 @@ cloudinary.config(
     api_key='453723362245378',
     api_secret='Fn3h6rp_oG6lvaDRk7i6Dil1oQw'
 )
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
 app = Flask(__name__)
+
+# 📦 Rutas base y archivos
 BASE = os.path.dirname(os.path.abspath(__file__))
 URLS_FILE = os.path.join(BASE, "urls_cloudinary.json")
 PEDIDOS_FILE = os.path.join(BASE, "pedidos.json")
 urls_cloudinary = {}
 
+# ✅ Asegura que existan las carpetas necesarias
+os.makedirs(os.path.join(BASE, "static"), exist_ok=True)
+os.makedirs(os.path.join(BASE, "static", "postales_generadas"), exist_ok=True)
+
+# ✅ Cargar URLs si existen
 if os.path.exists(URLS_FILE):
     with open(URLS_FILE) as f:
         urls_cloudinary = json.load(f)
