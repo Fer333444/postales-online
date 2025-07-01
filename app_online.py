@@ -329,71 +329,94 @@ def checkout_multiple():
         return f"❌ Error creando checkout: {str(e)}", 500
 @app.route('/checkout_combined', methods=['POST'])
 def checkout_combined():
-    from urllib.parse import quote
+    try:
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # O reemplaza con tu clave directa de prueba
 
-    email = request.form.get("email")
-    nombre = request.form.get("nombre")
-    direccion = request.form.get("direccion")
-    telefono = request.form.get("telefono")
-    codigo = request.form.get("codigo")
-    postales = request.form.getlist("postal")
-    vinos = request.form.getlist("vino")
+        codigo = request.form.get("codigo", "")
+        email = request.form.get("email")
+        nombre = request.form.get("nombre")
+        direccion = request.form.get("direccion")
+        telefono = request.form.get("telefono")
+        comentarios = request.form.get("comentarios", "")
 
-    line_items = []
+        postales = request.form.getlist("postal")
+        vinos = request.form.getlist("vino")
 
-    # Postales
-    for p in postales:
-        line_items.append({
-            "price_data": {
-                "currency": "eur",
-                "product_data": {"name": f"Postal {p}"},
-                "unit_amount": 300
-            },
-            "quantity": 1
-        })
+        if not email or not nombre or not direccion or not telefono:
+            return "Faltan datos de cliente", 400
 
-    # Vinos
-    precios_vino = {
-        "vino_tinto.jpg": 1200,
-        "vino_blanco.jpg": 1000,
-        "vino_rosado.jpg": 1100
-    }
+        line_items = []
+        productos_json = []
 
-    for vino in vinos:
-        cantidad = int(request.form.get(f"cantidad_{vino}", 0))
-        if cantidad > 0 and vino in precios_vino:
+        # Añadir postales
+        for p in postales:
             line_items.append({
                 "price_data": {
                     "currency": "eur",
-                    "product_data": {"name": vino.replace(".jpg", "").replace("_", " ").title()},
-                    "unit_amount": precios_vino[vino]
+                    "product_data": {"name": f"Postal {p}"},
+                    "unit_amount": 300
                 },
-                "quantity": cantidad
+                "quantity": 1
+            })
+            productos_json.append({
+                "tipo": "postal",
+                "codigo": codigo,
+                "plantilla": p
             })
 
-    if not line_items:
-        return "⚠️ No se seleccionó ningún producto", 400
-
-    # Crear sesión de Stripe
-    session = stripe.checkout.Session.create(
-        customer_email=email,
-        payment_method_types=["card"],
-        line_items=line_items,
-        mode="payment",
-        success_url="https://postales-online.onrender.com/success",
-        cancel_url="https://postales-online.onrender.com/cancel",
-        metadata={
-            "tipo": "combo",
-            "correo": email,
-            "codigo": codigo,
-            "postales": ",".join(postales),
-            "vinos": ",".join(vinos),
-            "direccion": direccion,
-            "telefono": telefono,
-            "comentarios": f"Pedido por {nombre}"
+        # Añadir vinos
+        precios_vino = {
+            "vino_tinto.jpg": ("Vino Tinto", 1200),
+            "vino_rosado.jpg": ("Vino Rosado", 1300),
+            "vino_blanco.jpg": ("Vino Blanco", 1250)
         }
-    )
-    return redirect(session.url, code=303)
+
+        for vino in vinos:
+            cantidad = int(request.form.get(f"cantidad_{vino}", 0))
+            if cantidad > 0 and vino in precios_vino:
+                nombre_vino, precio = precios_vino[vino]
+                line_items.append({
+                    "price_data": {
+                        "currency": "eur",
+                        "product_data": {"name": nombre_vino},
+                        "unit_amount": precio
+                    },
+                    "quantity": cantidad
+                })
+                productos_json.append({
+                    "tipo": "vino",
+                    "producto": vino,
+                    "cantidad": cantidad
+                })
+
+        if not line_items:
+            return "No seleccionaste ningún producto", 400
+
+        # Crear sesión de pago
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success",
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "tipo_compra": "combo",
+                "correo": email,
+                "codigo": codigo,
+                "nombre": nombre,
+                "direccion": direccion,
+                "telefono": telefono,
+                "comentarios": comentarios,
+                "productos": json.dumps(productos_json)
+            }
+        )
+        return redirect(session.url, code=303)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"❌ Error creando pago combinado: {str(e)}", 500
 @app.route('/pedido_vino', methods=['GET', 'POST'])
 def pedido_vino():
     if request.method == 'GET':
