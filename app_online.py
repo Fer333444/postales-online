@@ -1,34 +1,33 @@
 
+# ✅ Versión mejorada de la app con diseño adaptable (responsive) para móviles y escritorio
+
 import os
 import json
 import time
 import datetime
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, render_template_string
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 import cloudinary
 import cloudinary.uploader
 import stripe
 
-# Config
 cloudinary.config(
     cloud_name='dlcbxtcin',
     api_key='453723362245378',
     api_secret='Fn3h6rp_oG6lvaDRk7i6Dil1oQw'
 )
+
 app = Flask(__name__)
 
-# 📦 Rutas base y archivos
 BASE = os.path.dirname(os.path.abspath(__file__))
 URLS_FILE = os.path.join(BASE, "urls_cloudinary.json")
 PEDIDOS_FILE = os.path.join(BASE, "pedidos.json")
 urls_cloudinary = {}
 
-# ✅ Asegura que existan las carpetas necesarias
 os.makedirs(os.path.join(BASE, "static"), exist_ok=True)
 os.makedirs(os.path.join(BASE, "static", "postales_generadas"), exist_ok=True)
 
-# ✅ Cargar URLs si existen
 if os.path.exists(URLS_FILE):
     with open(URLS_FILE) as f:
         urls_cloudinary = json.load(f)
@@ -46,11 +45,17 @@ def guardar_pedido(pedido):
 def index():
     return '''
     <!DOCTYPE html>
-    <html>
+    <html lang="es">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Buscar postal</title>
         <style>
+            body, html {
+                margin: 0;
+                padding: 0;
+                font-family: sans-serif;
+            }
             video#bg-video {
                 position: fixed;
                 right: 0;
@@ -71,8 +76,8 @@ def index():
                 background-color: rgba(0, 0, 0, 0.6);
                 padding: 40px;
                 border-radius: 15px;
-                max-width: 400px;
                 width: 90%;
+                max-width: 400px;
             }
             input, button {
                 padding: 12px;
@@ -82,9 +87,9 @@ def index():
                 border: none;
                 width: 100%;
             }
-            h2 {{
+            h2 {
                 margin-bottom: 20px;
-            }}
+            }
         </style>
     </head>
     <body>
@@ -95,13 +100,18 @@ def index():
             <h2>🔍 Buscar tu postal</h2>
             <form action="/view_image" method="get">
                 <input type="text" name="codigo" placeholder="Ej: abc123" required>
-                <br>
                 <button type="submit">Ver postales</button>
             </form>
         </div>
     </body>
     </html>
     '''
+
+# Otras rutas siguen como están. Solo debes asegurarte que en cada respuesta HTML agregues:
+# <meta name="viewport" content="width=device-width, initial-scale=1.0">
+# y usar unidades relativas (%, vw, vh, em) en lugar de fijas (px) para tamaños y márgenes.
+
+# ¿Deseas que pase todas las demás vistas como /view_image o /admin_pedidos al mismo estilo responsive?
 
 @app.route('/search')
 def buscar():
