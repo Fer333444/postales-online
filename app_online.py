@@ -56,15 +56,40 @@ def buscar():
     """
 
 @app.route('/view_image')
-def ver_imagen():
-    codigo = request.args.get("codigo")
+def view_image():
+    codigo = request.args.get("codigo", "").strip()
+
     postales_path = os.path.join(BASE, "static", "postales_generadas")
-    archivos = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
-    html = f"<h2>📸 Tu postal personalizada</h2><form action='/checkout_multiple' method='POST'>"
-    html += f"<input type='hidden' name='codigo' value='{codigo}'>"
+    archivos = []
+
+    if os.path.exists(postales_path):
+        archivos = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
+
+    if not archivos:
+        return f"<h2>❌ No se encontraron postales para el código '{codigo}'</h2><a href='/'>Volver al inicio</a>"
+
+    html = f"""
+    <h2>📸 Tu postal personalizada</h2>
+    <form action='/checkout_multiple' method='POST'>
+        <input type='hidden' name='codigo' value='{codigo}'>
+        <div style='display:flex; flex-wrap:wrap; gap:20px; justify-content:center;'>
+    """
+
     for img in archivos:
-        html += f"<div><img src='/static/postales_generadas/{img}' width='200'><br><input type='checkbox' name='postal' value='{img}'> Seleccionar</div>"
-    html += "<br><input type='email' name='email' placeholder='Correo' required><button type='submit'>Pagar</button></form>"
+        html += f"""
+        <div style='text-align:center;'>
+            <img src='/static/postales_generadas/{img}' width='200'><br>
+            <label><input type='checkbox' name='postal' value='{img}'> Seleccionar</label>
+        </div>
+        """
+
+    html += """
+        </div><br>
+        <input type='email' name='email' placeholder='Tu correo electrónico' required><br><br>
+        <button type='submit'>💳 Pagar y recibir postales</button>
+    </form>
+    """
+
     return html
 
 @app.route('/subir_postal', methods=['GET', 'POST'])
@@ -78,11 +103,12 @@ def subir_postal():
             <button type='submit'>Subir</button>
         </form>
         """
+
     codigo = request.form.get("codigo")
     archivo = request.files.get("imagen")
 
     if not codigo or not archivo:
-        return "Código o imagen faltante", 400
+        return "❌ Código o imagen faltante", 400
 
     imagen_bytes = archivo.read()
 
@@ -106,16 +132,24 @@ def subir_postal():
             public_id=f"postal/{codigo}_{timestamp}_original",
             overwrite=True
         )
+
         urls_cloudinary[codigo] = {"imagen": r1['secure_url']}
+
+        # Guarda las URLs actualizadas en archivo
         with open(URLS_FILE, "w") as f:
             json.dump(urls_cloudinary, f)
+
+        # ✅ Guarda la imagen en disco también (opcional, para mostrarla localmente si deseas)
+        output_path = os.path.join(BASE, "static", "postales_generadas", f"{codigo}_original.jpg")
+        with open(output_path, "wb") as f:
+            f.write(imagen_bytes)
+
     except Exception as e:
         import traceback
         traceback.print_exc()
         return f"❌ Subida fallida: {str(e)}", 500
 
     return redirect(f"/view_image?codigo={codigo}")
-
 @app.route('/checkout_multiple', methods=['POST'])
 def checkout_multiple():
     codigo = request.form.get("codigo")
