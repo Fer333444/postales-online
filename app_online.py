@@ -80,24 +80,40 @@ def subir_postal():
         """
     codigo = request.form.get("codigo")
     archivo = request.files.get("imagen")
+
     if not codigo or not archivo:
         return "Código o imagen faltante", 400
+
     imagen_bytes = archivo.read()
+
     try:
         test_image = Image.open(BytesIO(imagen_bytes))
         test_image.verify()
     except UnidentifiedImageError:
-        return "Imagen inválida", 502
+        return "❌ Imagen inválida", 502
+    except Exception as e:
+        return f"❌ Error procesando imagen: {str(e)}", 502
+
     if len(imagen_bytes) < 100:
-        return "Imagen vacía", 400
+        return "❌ Imagen vacía", 400
+
     timestamp = int(time.time())
+
     try:
-        r1 = cloudinary.uploader.upload(BytesIO(imagen_bytes), public_id=f"postal/{codigo}_{timestamp}_original", overwrite=True)
+        print(f"📦 Subiendo imagen con código: {codigo}")
+        r1 = cloudinary.uploader.upload(
+            BytesIO(imagen_bytes),
+            public_id=f"postal/{codigo}_{timestamp}_original",
+            overwrite=True
+        )
         urls_cloudinary[codigo] = {"imagen": r1['secure_url']}
         with open(URLS_FILE, "w") as f:
             json.dump(urls_cloudinary, f)
     except Exception as e:
-        return f"Subida fallida: {str(e)}", 500
+        import traceback
+        traceback.print_exc()
+        return f"❌ Subida fallida: {str(e)}", 500
+
     return redirect(f"/view_image?codigo={codigo}")
 
 @app.route('/checkout_multiple', methods=['POST'])
