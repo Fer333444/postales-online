@@ -268,7 +268,7 @@ def checkout_multiple():
                 "price_data": {
                     "currency": "eur",
                     "product_data": {"name": f"Postal {p}"},
-                    "unit_amount": 300
+                    "unit_amount": 100
                 },
                 "quantity": 1
             } for p in postales
@@ -323,7 +323,7 @@ def checkout_combined():
             "price_data": {
                 "currency": "eur",
                 "product_data": {"name": f"Postal {p}"},
-                "unit_amount": 300
+                "unit_amount": 100
             },
             "quantity": 1
         })
@@ -340,7 +340,7 @@ def checkout_combined():
                 "price_data": {
                     "currency": "eur",
                     "product_data": {"name": v.replace("_", " ").title()},
-                    "unit_amount": 1000
+                    "unit_amount": 100
                 },
                 "quantity": cantidad
             })
@@ -383,7 +383,7 @@ def pedido_vino():
     email = request.form.get("email")
     producto = request.form.get("producto")
     cantidad = int(request.form.get("cantidad"))
-    precios = {"vino_tinto": 1200, "vino_blanco": 1000}
+    precios = {"vino_tinto": 12, "vino_blanco": 10}
     if producto not in precios:
         return "Producto inválido"
     session = stripe.checkout.Session.create(
@@ -481,58 +481,24 @@ def cancel():
     return "<h2>⚠️ Pago cancelado</h2><a href='/'>Volver al inicio</a>"
 @app.route('/success')
 def success():
-    return '''
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Pago exitoso</title>
-        <style>
-            body {
-                background-color: #111;
-                color: white;
-                font-family: sans-serif;
-                text-align: center;
-                padding: 40px 20px;
-            }
-            .box {
-                background-color: #222;
-                padding: 30px;
-                border-radius: 15px;
-                max-width: 500px;
-                margin: 50px auto;
-                box-shadow: 0 0 10px rgba(255,255,255,0.1);
-            }
-            h1 {
-                color: #2ecc71;
-                font-size: 28px;
-                margin-bottom: 20px;
-            }
-            p {
-                font-size: 18px;
-            }
-            a {
-                display: inline-block;
-                margin-top: 20px;
-                padding: 12px 24px;
-                background-color: gold;
-                color: black;
-                font-weight: bold;
-                border-radius: 8px;
-                text-decoration: none;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="box">
-            <h1>✅ ¡Pago exitoso!</h1>
-            <p>Tu pedido fue procesado correctamente.</p>
-            <a href="/">Volver al inicio</a>
-        </div>
-    </body>
-    </html>
-    '''
+    # Intentar mostrar la última postal generada si existe
+    codigo = request.args.get("codigo")
+    if not codigo:
+        return "<h2>✅ Pago exitoso</h2><p>Tu pedido fue procesado correctamente.</p><a href='/'>Volver al inicio</a>"
+
+    postales_path = os.path.join(BASE, "static", "postales_generadas")
+    archivos = [f for f in os.listdir(postales_path) if f.startswith(codigo)] if os.path.exists(postales_path) else []
+
+    html = """
+    <h2>✅ ¡Pago exitoso!</h2>
+    <p>Tu pedido fue procesado correctamente.</p>
+    <h3>📸 Postal seleccionada:</h3>
+    <div style='display:flex; flex-wrap:wrap;'>
+    """
+    for img in archivos:
+        html += f"<div style='margin:10px;'><img src='/static/postales_generadas/{img}' width='250'><br>{img}</div>"
+    html += """</div><br><a href='/'>Volver al inicio</a>"""
+    return html
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

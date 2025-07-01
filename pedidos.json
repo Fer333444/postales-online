@@ -1,28 +1,10 @@
-[
-    {
-        "fecha": "2025-07-01T12:34:56",
-        "correo": "cliente@example.com",
-        "tipo_compra": "combo",
-        "productos": [
-            {
-                "tipo": "postal",
-                "codigo": "abc123",
-                "plantilla": "abc123_plantilla_postal_1.jpg"
-            },
-            {
-                "tipo": "vino",
-                "producto": "vino_tinto",
-                "cantidad": 2
-            },
-            {
-                "tipo": "camiseta",
-                "modelo": "camiseta_hombre_blanca",
-                "talla": "L",
-                "cantidad": 1
-            }
-        ],
-        "direccion": "Calle Falsa 123, Oporto, Portugal",
-        "telefono": "+351912345678",
-        "comentarios": "Entregar después de las 18h"
-    }
-]
+{
+  "fecha": "2025-07-01T16:26:52",
+  "correo": "cliente@example.com",
+  "tipo_compra": "combo",
+  "productos": [...],
+  "direccion": "...",
+  "telefono": "...",
+  "comentarios": "...",
+  "nombre": "..."
+}
