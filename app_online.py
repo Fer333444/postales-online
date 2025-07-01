@@ -1,5 +1,6 @@
 import os
 import json
+import datetime
 import time
 from flask import Flask, request, jsonify, redirect
 from PIL import Image, UnidentifiedImageError
@@ -219,41 +220,75 @@ def pedido_vino():
             }
         )
         return redirect(session.url, code=303)
-@app.route('/checkout', methods=['POST'])
-def checkout():
+@app.route('/checkout_multiple', methods=['POST'])
+def checkout_multiple():
     codigo = request.form.get("codigo")
     email = request.form.get("email")
-    postal = request.form.get("postal")  # nombre del archivo seleccionado
+    postales = request.form.getlist("postal")
 
-    if not codigo or not email or not postal:
-        return "Faltan datos para crear el pago", 400
+    if not codigo or not email or not postales:
+        return "Faltan datos", 400
 
-    try:
-        session = stripe.checkout.Session.create(
-            customer_email=email,
-            metadata={
-                "codigo": codigo,
-                "postal": postal
+    productos = [
+        {
+            "price_data": {
+                "currency": "eur",
+                "product_data": {"name": f"Postal {p}"},
+                "unit_amount": 300
             },
-            payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {
-                        "name": f"Postal personalizada ({codigo})"
-                    },
-                    "unit_amount": 500  # Precio en céntimos (5.00€)
-                },
-                "quantity": 1
-            }],
-            mode="payment",
-            success_url=f"https://postales-online.onrender.com/success?codigo={codigo}&postal={postal}",
-            cancel_url="https://postales-online.onrender.com/cancel"
-        )
-        return redirect(session.url, code=303)
+            "quantity": 1
+        } for p in postales
+    ]
 
+    session = stripe.checkout.Session.create(
+        customer_email=email,
+        payment_method_types=["card"],
+        line_items=productos,
+        mode="payment",
+        success_url="https://postales-online.onrender.com/success_multiple",
+        cancel_url="https://postales-online.onrender.com/cancel",
+        metadata={
+            "tipo": "postal",
+            "codigo": codigo,
+            "correo": email,
+            "postales": ",".join(postales)
+        }
+    )
+    return redirect(session.url, code=303)
+
+@app.route('/webhook_stripe', methods=['POST'])
+def webhook_stripe():
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
-        return f"Error creando sesión de pago: {str(e)}", 500
+        return f"Webhook inválido: {e}", 400
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        if session.get("metadata", {}).get("tipo") == "postal":
+            registro = {
+                "tipo": "postal",
+                "codigo": session["metadata"].get("codigo"),
+                "correo": session.get("customer_email"),
+                "fecha": datetime.utcnow().isoformat(),
+                "productos": session["metadata"].get("postales", "").split(",")
+            }
+            guardar_registro_pedido(registro)
+
+    return '', 200
+
+def guardar_registro_pedido(pedido):
+    pedidos_file = os.path.join(BASE, "pedidos.json")
+    todos = []
+    if os.path.exists(pedidos_file):
+        with open(pedidos_file, "r") as f:
+            todos = json.load(f)
+    todos.append(pedido)
+    with open(pedidos_file, "w") as f:
+        json.dump(todos, f, indent=2)
 @app.route('/webhook_stripe', methods=['POST'])
 def webhook_stripe():
     import datetime
@@ -529,41 +564,42 @@ def ver_imagen(codigo):
     </html>
     '''
     return html
+import datetime
+
 @app.route('/admin_pedidos')
 def admin_pedidos():
-    from flask import Response
-    token = request.args.get("token")
-    admin_token = os.getenv("ADMIN_TOKEN", "secreto123")
-
-    if token != admin_token:
-        return "<h2>🚫 Acceso denegado</h2><p>Proporcione un token válido.</p>", 403
+    token = request.args.get("token", "")
+    if token != "secreto123":
+        return "🔒 Acceso no autorizado", 403
 
     pedidos_file = os.path.join(BASE, "pedidos.json")
     if not os.path.exists(pedidos_file):
-        return "<h3>📭 No hay pedidos registrados aún.</h3>"
+        return "No hay pedidos registrados aún."
 
-    try:
-        with open(pedidos_file, "r", encoding="utf-8") as f:
-            pedidos = json.load(f)
+    with open(pedidos_file) as f:
+        pedidos = json.load(f)
 
-        html = "<h2>📦 Pedidos registrados</h2><ul style='font-family:sans-serif;'>"
-        for p in pedidos[::-1]:
-            html += f"<li><strong>{p['fecha']}</strong> - {p['email']}<br>"
-            html += f"<em>Tipo:</em> {p.get('tipo','')}<br>"
-            if p.get('direccion'):
-                html += f"<em>Dirección:</em> {p['direccion']}<br>"
-            html += "<ul>"
-            for producto in p["productos"]:
-                html += f"<li>{producto['nombre']}"
-                if 'cantidad' in producto:
-                    html += f" x{producto['cantidad']}"
-                html += "</li>"
-            html += "</ul></li><hr>"
-        html += "</ul>"
-        return html
-
-    except Exception as e:
-        return f"<h3>Error al leer pedidos: {e}</h3>"
+    html = "<h2>📦 Pedidos registrados</h2><ul>"
+    for p in pedidos:
+        html += f"<li><strong>{p['tipo'].capitalize()}</strong> - {p['correo']} - {p['fecha']}<br>Productos: {', '.join(p['productos'])}</li><hr>"
+    html += "</ul>"
+    return html
+def registrar_pedido(correo, tipo, productos, detalles={}):
+    pedido = {
+        "correo": correo,
+        "tipo": tipo,
+        "productos": productos,
+        "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    pedido.update(detalles)
+    pedidos_file = os.path.join(BASE, "pedidos.json")
+    todos = []
+    if os.path.exists(pedidos_file):
+        with open(pedidos_file) as f:
+            todos = json.load(f)
+    todos.append(pedido)
+    with open(pedidos_file, "w") as f:
+        json.dump(todos, f, indent=2)
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
