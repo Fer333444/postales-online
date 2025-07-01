@@ -138,6 +138,103 @@ def enviar_postal():
         '''
     else:
         return f"<h2>⚠️ No se encontró la postal para el código {codigo}</h2>", 404
+@app.route('/pedido_vino', methods=['GET', 'POST'])
+def pedido_vino():
+    if request.method == 'GET':
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Pedido de Vinos</title>
+            <style>
+                body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 5%; }
+                input, select, textarea { margin: 10px; padding: 10px; border-radius: 5px; width: 300px; }
+                button { padding: 10px 20px; background: #2ecc71; color: white; border: none; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <h2>🍷 Pedido de vinos a domicilio</h2>
+            <form action="/pedido_vino" method="POST">
+                <input name="nombre" placeholder="Nombre completo" required><br>
+                <input name="direccion" placeholder="Dirección completa" required><br>
+                <input name="telefono" placeholder="Teléfono" required><br>
+                <input name="email" type="email" placeholder="Correo electrónico" required><br>
+
+                <label>Selecciona tus vinos:</label><br>
+                <select name="producto1" required>
+                    <option value="">-- Elige vino --</option>
+                    <option value="vino_tinto">Vino tinto</option>
+                    <option value="vino_blanco">Vino blanco</option>
+                    <option value="vino_rosado">Vino rosado</option>
+                </select>
+                <input name="cantidad1" type="number" min="0" value="0"><br>
+
+                <select name="producto2">
+                    <option value="">-- Elige otro vino (opcional) --</option>
+                    <option value="vino_tinto">Vino tinto</option>
+                    <option value="vino_blanco">Vino blanco</option>
+                    <option value="vino_rosado">Vino rosado</option>
+                </select>
+                <input name="cantidad2" type="number" min="0" value="0"><br>
+
+                <textarea name="comentarios" placeholder="Comentarios adicionales (opcional)"></textarea><br>
+
+                <button type="submit">💳 Pagar y enviar pedido</button>
+            </form>
+        </body>
+        </html>
+        '''
+
+    else:
+        nombre = request.form.get("nombre")
+        direccion = request.form.get("direccion")
+        telefono = request.form.get("telefono")
+        email = request.form.get("email")
+        comentarios = request.form.get("comentarios", "")
+
+        items = []
+        precios = {
+            "vino_tinto": ("Vino Tinto", 1200),   # precios en céntimos
+            "vino_blanco": ("Vino Blanco", 1000),
+            "vino_rosado": ("Vino Rosado", 1100),
+        }
+
+        for i in range(1, 3):
+            prod = request.form.get(f"producto{i}")
+            cant = request.form.get(f"cantidad{i}")
+            if prod and cant and prod in precios and int(cant) > 0:
+                nombre_prod, precio_unit = precios[prod]
+                items.append({
+                    "price_data": {
+                        "currency": "eur",
+                        "product_data": {"name": nombre_prod},
+                        "unit_amount": precio_unit
+                    },
+                    "quantity": int(cant)
+                })
+
+        if not items:
+            return "Debes seleccionar al menos un vino", 400
+
+        try:
+            session = stripe.checkout.Session.create(
+                customer_email=email,
+                payment_method_types=["card"],
+                line_items=items,
+                mode="payment",
+                success_url="https://postales-online.onrender.com/success?tipo=vino",
+                cancel_url="https://postales-online.onrender.com/cancel",
+                metadata={
+                    "nombre": nombre,
+                    "direccion": direccion,
+                    "telefono": telefono,
+                    "comentarios": comentarios
+                }
+            )
+            return redirect(session.url, code=303)
+
+        except Exception as e:
+            return f"Error al crear sesión de pago: {str(e)}", 500
 
 @app.route('/checkout', methods=['POST'])
 def checkout():
@@ -176,9 +273,11 @@ def checkout():
         return f"Error creando sesión de pago: {str(e)}", 500
 @app.route('/webhook_stripe', methods=['POST'])
 def webhook_stripe():
+    import datetime
     payload = request.data
     sig_header = request.headers.get('Stripe-Signature')
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
@@ -187,11 +286,59 @@ def webhook_stripe():
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         email = session.get('customer_email')
-        postal_filename = session['metadata'].get('postal')  # ✅ la postal seleccionada
+        metadata = session.get('metadata', {})
+        fecha = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        if email and postal_filename:
-            enlace = f"https://postales-online.onrender.com/static/postales_generadas/{postal_filename}"
-            enviar_email_profesional(email, enlace)
+        pedido = {
+            "email": email,
+            "fecha": fecha,
+            "tipo": metadata.get("tipo", "desconocido"),
+            "productos": [],
+            "codigo_postal": metadata.get("codigo", ""),
+            "direccion": metadata.get("direccion", ""),
+            "telefono": metadata.get("telefono", ""),
+            "comentarios": metadata.get("comentarios", "")
+        }
+
+        # Si es una postal personalizada
+        if "postal" in metadata:
+            enlace = f"https://postales-online.onrender.com/static/postales_generadas/{metadata['postal']}"
+            pedido["productos"].append({
+                "nombre": "Postal personalizada",
+                "archivo": metadata["postal"],
+                "descarga": enlace
+            })
+
+        # Extraer productos desde Stripe line_items
+        try:
+            line_items = stripe.checkout.Session.list_line_items(session["id"], limit=10)
+            for item in line_items.data:
+                pedido["productos"].append({
+                    "nombre": item.description,
+                    "cantidad": item.quantity,
+                    "precio_unitario": item.amount_total / item.quantity / 100
+                })
+        except Exception as e:
+            print("❌ No se pudo leer line_items:", e)
+
+        # Guardar pedido en pedidos.json
+        pedidos_file = os.path.join(BASE, "pedidos.json")
+        try:
+            if os.path.exists(pedidos_file):
+                with open(pedidos_file, "r", encoding="utf-8") as f:
+                    pedidos = json.load(f)
+            else:
+                pedidos = []
+
+            pedidos.append(pedido)
+
+            with open(pedidos_file, "w", encoding="utf-8") as f:
+                json.dump(pedidos, f, indent=2, ensure_ascii=False)
+
+            print(f"✅ Pedido guardado de {email}")
+
+        except Exception as e:
+            print(f"❌ Error guardando pedido: {e}")
 
     return '', 200
 
@@ -399,6 +546,41 @@ def ver_imagen(codigo):
     </html>
     '''
     return html
+@app.route('/admin_pedidos')
+def admin_pedidos():
+    from flask import Response
+    token = request.args.get("token")
+    admin_token = os.getenv("ADMIN_TOKEN", "secreto123")
+
+    if token != admin_token:
+        return "<h2>🚫 Acceso denegado</h2><p>Proporcione un token válido.</p>", 403
+
+    pedidos_file = os.path.join(BASE, "pedidos.json")
+    if not os.path.exists(pedidos_file):
+        return "<h3>📭 No hay pedidos registrados aún.</h3>"
+
+    try:
+        with open(pedidos_file, "r", encoding="utf-8") as f:
+            pedidos = json.load(f)
+
+        html = "<h2>📦 Pedidos registrados</h2><ul style='font-family:sans-serif;'>"
+        for p in pedidos[::-1]:
+            html += f"<li><strong>{p['fecha']}</strong> - {p['email']}<br>"
+            html += f"<em>Tipo:</em> {p.get('tipo','')}<br>"
+            if p.get('direccion'):
+                html += f"<em>Dirección:</em> {p['direccion']}<br>"
+            html += "<ul>"
+            for producto in p["productos"]:
+                html += f"<li>{producto['nombre']}"
+                if 'cantidad' in producto:
+                    html += f" x{producto['cantidad']}"
+                html += "</li>"
+            html += "</ul></li><hr>"
+        html += "</ul>"
+        return html
+
+    except Exception as e:
+        return f"<h3>Error al leer pedidos: {e}</h3>"
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
