@@ -255,40 +255,6 @@ def checkout_multiple():
         }
     )
     return redirect(session.url, code=303)
-
-@app.route('/webhook_stripe', methods=['POST'])
-def webhook_stripe():
-    payload = request.data
-    sig_header = request.headers.get('Stripe-Signature')
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except Exception as e:
-        return f"Webhook inválido: {e}", 400
-
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        if session.get("metadata", {}).get("tipo") == "postal":
-            registro = {
-                "tipo": "postal",
-                "codigo": session["metadata"].get("codigo"),
-                "correo": session.get("customer_email"),
-                "fecha": datetime.utcnow().isoformat(),
-                "productos": session["metadata"].get("postales", "").split(",")
-            }
-            guardar_registro_pedido(registro)
-
-    return '', 200
-
-def guardar_registro_pedido(pedido):
-    pedidos_file = os.path.join(BASE, "pedidos.json")
-    todos = []
-    if os.path.exists(pedidos_file):
-        with open(pedidos_file, "r") as f:
-            todos = json.load(f)
-    todos.append(pedido)
-    with open(pedidos_file, "w") as f:
-        json.dump(todos, f, indent=2)
 @app.route('/webhook_stripe', methods=['POST'])
 def webhook_stripe():
     import datetime
