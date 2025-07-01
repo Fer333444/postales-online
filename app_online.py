@@ -120,9 +120,9 @@ def pagar_vino():
 
     vinos = json.loads(vinos_json)
     precios = {
-        "vino_tinto.jpg": 1200,
-        "vino_blanco.jpg": 1000,
-        "vino_rosado.jpg": 1100
+        "vino_tinto.jpg": 12,
+        "vino_blanco.jpg": 10,
+        "vino_rosado.jpg": 11
     }
 
     line_items = []
@@ -247,7 +247,7 @@ def checkout():
                     "product_data": {
                         "name": f"Postal personalizada ({codigo})"
                     },
-                    "unit_amount": 300  # Precio en céntimos (3.00€)
+                    "unit_amount": 100  # Precio en céntimos (1.00€)
                 },
                 "quantity": 1
             }],
@@ -391,7 +391,7 @@ def buscar():
     return redirect(f"/view_image/{codigo}")
 
 @app.route('/view_image/<codigo>')
-def ver_imagen(codigo):
+def view_image(codigo):
     data = urls_cloudinary.get(codigo)
     if not data:
         return f'''
@@ -400,11 +400,17 @@ def ver_imagen(codigo):
         ''', 404
 
     postales_path = os.path.join(BASE, "static", "postales_generadas")
+    vinos_path = os.path.join(BASE, "static", "Vinos")
     postales_multiples = []
+    vinos = []
+
     if os.path.exists(postales_path):
         for file in os.listdir(postales_path):
             if file.startswith(codigo):
-                postales_multiples.append(file)  # solo el nombre
+                postales_multiples.append(file)
+
+    if os.path.exists(vinos_path):
+        vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
 
     html = f'''
     <!DOCTYPE html>
@@ -444,11 +450,12 @@ def ver_imagen(codigo):
                 text-decoration: none;
                 display: inline-block;
             }}
-            input[type="email"], select {{
+            input[type="email"], input[type="number"] {{
                 padding: 10px;
                 font-size: 16px;
                 border-radius: 5px;
                 margin-top: 10px;
+                width: 100%;
             }}
         </style>
     </head>
@@ -467,8 +474,30 @@ def ver_imagen(codigo):
             </form>
         </div>
 
+        <hr style="margin: 40px 0; border-color: #444">
+
+        <h2>🍷 Selecciona vinos</h2>
+        <form method="POST" action="/formulario_vino">
+            <div class="grid">
+    '''
+
+    for vino in vinos:
+        nombre = vino.replace(".jpg", "").replace("_", " ").title()
+        html += f'''
+                <div>
+                    <img src="/static/Vinos/{vino}">
+                    <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
+                    <input type="number" name="cantidad_{vino}" min="0" value="0">
+                </div>
+        '''
+
+    html += f'''
+            </div>
+            <button class="shopify-button" type="submit">🍷 Pedir vinos</button>
+        </form>
+
         <script>
-            const form = document.querySelector("form");
+            const form = document.querySelector("form[action='/checkout']");
             form.addEventListener("submit", function(e) {{
                 const selected = document.querySelector("input[name='postal']:checked");
                 if (selected) {{
