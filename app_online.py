@@ -4,6 +4,7 @@ import time
 from flask import Flask, request, jsonify, redirect
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
+from flask import render_template_string
 import cloudinary
 import cloudinary.uploader
 import stripe
@@ -72,6 +73,90 @@ def enviar_email_profesional(destinatario, enlace):
         print(f"✅ Email enviado a {destinatario} ({response.status_code})")
     except Exception as e:
         print(f"❌ Error enviando email: {e}")
+@app.route('/formulario_vino', methods=['POST'])
+def formulario_vino():
+    vinos_seleccionados = request.form.getlist("vino")
+    cantidades = {vino: int(request.form.get(f"cantidad_{vino}", 0)) for vino in vinos_seleccionados}
+
+    if not vinos_seleccionados:
+        return "<h2>❌ No se seleccionaron vinos</h2><a href='/'>Volver</a>", 400
+
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Confirmar pedido de vinos</title>
+        <style>
+            body {{ background-color: #111; color: white; font-family: sans-serif; text-align: center; }}
+            form {{ max-width: 400px; margin: auto; background-color: #222; padding: 20px; border-radius: 10px; }}
+            input, button {{ margin-top: 10px; padding: 10px; width: 100%; border-radius: 5px; border: none; }}
+            button {{ background-color: gold; font-weight: bold; }}
+        </style>
+    </head>
+    <body>
+        <h2>🍷 Confirmar pedido de vinos</h2>
+        <form method="POST" action="/pagar_vino">
+            <input type="hidden" name="vinos_json" value=''' + json.dumps(cantidades).replace("'", "&quot;") + '''>
+            <input name="nombre" placeholder="Nombre completo" required><br>
+            <input name="direccion" placeholder="Dirección completa" required><br>
+            <input name="telefono" placeholder="Teléfono" required><br>
+            <input type="email" name="email" placeholder="Correo electrónico" required><br>
+            <button type="submit">💳 Pagar pedido de vinos</button>
+        </form>
+    </body>
+    </html>
+    '''
+    return render_template_string(html)
+@app.route('/pagar_vino', methods=['POST'])
+def pagar_vino():
+    vinos_json = request.form.get("vinos_json")
+    email = request.form.get("email")
+    nombre = request.form.get("nombre")
+    direccion = request.form.get("direccion")
+    telefono = request.form.get("telefono")
+
+    if not vinos_json or not email:
+        return "Faltan datos", 400
+
+    vinos = json.loads(vinos_json)
+    precios = {
+        "vino_tinto.jpg": 1200,
+        "vino_blanco.jpg": 1000,
+        "vino_rosado.jpg": 1100
+    }
+
+    line_items = []
+    for vino, cantidad in vinos.items():
+        if cantidad > 0 and vino in precios:
+            line_items.append({
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": vino.replace(".jpg", "").replace("_", " ").title()},
+                    "unit_amount": precios[vino]
+                },
+                "quantity": cantidad
+            })
+
+    if not line_items:
+        return "No hay vinos válidos para pagar", 400
+
+    session = stripe.checkout.Session.create(
+        customer_email=email,
+        payment_method_types=["card"],
+        line_items=line_items,
+        mode="payment",
+        success_url="https://postales-online.onrender.com/success",
+        cancel_url="https://postales-online.onrender.com/cancel",
+        metadata={
+            "tipo": "vino",
+            "correo": email,
+            "direccion": direccion,
+            "telefono": telefono,
+            "productos_json": json.dumps([{"producto": k, "cantidad": v} for k, v in vinos.items() if v > 0])
+        }
+    )
+
+    return redirect(session.url, code=303)
 
 @app.route('/subir_postal', methods=['POST'])
 def subir_postal():
