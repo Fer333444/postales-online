@@ -1,6 +1,7 @@
 
 # ✅ Versión mejorada de la app con diseño adaptable (responsive) para móviles y escritorio
 
+# Versión corregida con indentación arreglada para evitar errores
 import os
 import json
 import time
@@ -107,21 +108,6 @@ def index():
     </html>
     '''
 
-# Otras rutas siguen como están. Solo debes asegurarte que en cada respuesta HTML agregues:
-# <meta name="viewport" content="width=device-width, initial-scale=1.0">
-# y usar unidades relativas (%, vw, vh, em) en lugar de fijas (px) para tamaños y márgenes.
-
-# ¿Deseas que pase todas las demás vistas como /view_image o /admin_pedidos al mismo estilo responsive?
-
-@app.route('/search')
-def buscar():
-    return """
-    <form action='/view_image' method='get'>
-        <input name='codigo' placeholder='Código'>
-        <button type='submit'>Ver postal</button>
-    </form>
-    """
-
 @app.route('/view_image')
 def view_image():
     codigo = request.args.get("codigo", "").strip()
@@ -137,121 +123,76 @@ def view_image():
     if os.path.exists(vinos_path):
         vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
 
-       html = f"""  # ✅ alineado correctamente con el bloque anterior
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Postales y Vinos</title>
-    <style>
-        body {{
-            background-color: #111;
-            color: white;
-            font-family: sans-serif;
-            margin: 0;
-            padding: 0;
-        }}
-        h2, h3 {{
-            margin-top: 20px;
-        }}
-        .grid {{
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 16px;
-        }}
-        img {{
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-        }}
-        .item {{
-            background-color: #222;
-            padding: 10px;
-            border-radius: 10px;
-            max-width: 240px;
-        }}
-        .seccion {{
-            background-color: #222;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 16px auto;
-            width: 90%;
-            max-width: 900px;
-        }}
-        input, select, button {{
-            padding: 10px;
-            font-size: 16px;
-            margin-top: 10px;
-            width: 100%;
-            border-radius: 5px;
-            border: none;
-        }}
-        button {{
-            background-color: gold;
-            color: black;
-            font-weight: bold;
-            cursor: pointer;
-        }}
-    </style>
-</head>
-<body>
-    <form action="/checkout_combined" method="POST">
-        <input type="hidden" name="codigo" value="{codigo}">
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset=\"UTF-8\">
+        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+        <title>Postales y Vinos</title>
+        <style>
+            body {{ background-color: #111; color: white; font-family: sans-serif; margin: 0; padding: 0; }}
+            .grid {{ display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }}
+            img {{ max-width: 100%; height: auto; border-radius: 8px; }}
+            .item {{ background-color: #222; padding: 10px; border-radius: 10px; max-width: 240px; }}
+            .seccion {{ background-color: #222; padding: 20px; border-radius: 10px; margin: 16px auto; width: 90%; max-width: 900px; }}
+            input, select, button {{ padding: 10px; font-size: 16px; margin-top: 10px; width: 100%; border-radius: 5px; border: none; }}
+            button {{ background-color: gold; color: black; font-weight: bold; cursor: pointer; }}
+        </style>
+    </head>
+    <body>
+        <form action=\"/checkout_combined\" method=\"POST\">
+            <input type=\"hidden\" name=\"codigo\" value=\"{codigo}\">
 
-        <div class="seccion">
-            <h2>📸 Selecciona postales</h2>
-            <div class="grid">
-"""
-
-# Postales generadas
-for img in archivos:
-    html += f"""
-        <div class="item">
-            <img src="/static/postales_generadas/{img}">
-            <label><input type="checkbox" name="postal" value="{img}"> Seleccionar</label>
-        </div>
+            <div class=\"seccion\">
+                <h2>📸 Selecciona postales</h2>
+                <div class=\"grid\">
     """
 
-# Sección de vinos
-html += """
+    for img in archivos:
+        html += f"""
+        <div class=\"item\">
+            <img src=\"/static/postales_generadas/{img}\">
+            <label><input type=\"checkbox\" name=\"postal\" value=\"{img}\"> Seleccionar</label>
         </div>
-    </div>
+        """
 
-    <div class="seccion">
-        <h2>🍷 Selecciona vinos</h2>
-        <div class="grid">
-"""
+    html += """
+                </div>
+            </div>
+            <div class=\"seccion\">
+                <h2>🍷 Selecciona vinos</h2>
+                <div class=\"grid\">
+    """
 
-for vino in vinos:
-    nombre = vino.replace("_", " ").replace(".jpg", "").replace(".png", "").title()
-    html += f"""
-        <div class="item">
-            <img src="/static/Vinos/{vino}">
+    for vino in vinos:
+        nombre = vino.replace("_", " ").replace(".jpg", "").replace(".png", "").title()
+        html += f"""
+        <div class=\"item\">
+            <img src=\"/static/Vinos/{vino}\">
             <p><strong>{nombre}</strong></p>
-            <label><input type="checkbox" name="vino" value="{vino}"> Añadir</label><br>
-            <input type="number" name="cantidad_{vino}" min="0" value="0">
+            <label><input type=\"checkbox\" name=\"vino\" value=\"{vino}\"> Añadir</label><br>
+            <input type=\"number\" name=\"cantidad_{vino}\" min=\"0\" value=\"0\">
         </div>
+        """
+
+    html += """
+                </div>
+            </div>
+            <div class=\"seccion\">
+                <h2>📋 Datos del cliente</h2>
+                <input type=\"text\" name=\"nombre\" placeholder=\"Nombre completo\" required>
+                <input type=\"text\" name=\"direccion\" placeholder=\"Dirección completa\" required>
+                <input type=\"text\" name=\"telefono\" placeholder=\"Teléfono\" required>
+                <input type=\"email\" name=\"email\" placeholder=\"Correo electrónico\" required>
+                <button type=\"submit\">💳 Pagar y confirmar pedido</button>
+            </div>
+        </form>
+    </body>
+    </html>
     """
 
-# Sección de datos del cliente
-html += """
-        </div>
-    </div>
-
-    <div class="seccion">
-        <h2>📋 Datos del cliente</h2>
-        <input type="text" name="nombre" placeholder="Nombre completo" required>
-        <input type="text" name="direccion" placeholder="Dirección completa" required>
-        <input type="text" name="telefono" placeholder="Teléfono" required>
-        <input type="email" name="email" placeholder="Correo electrónico" required>
-        <button type="submit">💳 Pagar y confirmar pedido</button>
-    </div>
-</form>
-</body>
-</html>
-"""
+    return html
 @app.route('/subir_postal', methods=['GET', 'POST'])
 def subir_postal():
     if request.method == 'GET':
