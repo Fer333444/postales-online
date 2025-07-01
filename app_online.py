@@ -418,18 +418,31 @@ def webhook_stripe():
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
         return f"Webhook inválido: {e}", 400
+
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         metadata = session.get("metadata", {})
-        pedido = {
-            "email": session.get("customer_email"),
-            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "tipo": metadata.get("tipo"),
-            "productos": metadata.get("postales", metadata.get("producto", "")).split(",")
-        }
-        guardar_pedido(pedido)
-    return '', 200
 
+        try:
+            productos = json.loads(metadata.get("productos_json", "[]"))
+        except:
+            productos = []
+
+        pedido = {
+            "fecha": datetime.datetime.now().isoformat(),
+            "correo": session.get("customer_email"),
+            "tipo_compra": metadata.get("tipo", "combo"),
+            "productos": productos,
+            "direccion": metadata.get("direccion", ""),
+            "telefono": metadata.get("telefono", ""),
+            "comentarios": metadata.get("comentarios", ""),
+            "nombre": metadata.get("nombre", "")
+        }
+
+        guardar_pedido(pedido)
+        print("✅ Pedido guardado correctamente")
+
+    return '', 200
 @app.route('/admin_pedidos')
 def admin_pedidos():
     token = request.args.get("token")
