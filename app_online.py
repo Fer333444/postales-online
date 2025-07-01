@@ -39,12 +39,64 @@ def guardar_pedido(pedido):
 
 @app.route('/')
 def index():
-    return """
-    <h2>Bienvenido</h2>
-    <a href='/pedido_vino'>Pedir Vino</a><br>
-    <a href='/search'>Buscar Postal</a><br>
-    <a href='/subir_postal'>Subir Foto</a>
-    """
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Buscar postal</title>
+        <style>
+            video#bg-video {
+                position: fixed;
+                right: 0;
+                bottom: 0;
+                min-width: 100%;
+                min-height: 100%;
+                object-fit: cover;
+                z-index: -1;
+                filter: brightness(0.4);
+            }
+            .contenido {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                text-align: center;
+                background-color: rgba(0, 0, 0, 0.6);
+                padding: 40px;
+                border-radius: 15px;
+                max-width: 400px;
+                width: 90%;
+            }
+            input, button {
+                padding: 12px;
+                font-size: 18px;
+                margin-top: 10px;
+                border-radius: 8px;
+                border: none;
+                width: 100%;
+            }
+            h2 {{
+                margin-bottom: 20px;
+            }}
+        </style>
+    </head>
+    <body>
+        <video autoplay muted loop playsinline id="bg-video">
+            <source src="/static/douro_sunset.mp4" type="video/mp4">
+        </video>
+        <div class="contenido">
+            <h2>🔍 Buscar tu postal</h2>
+            <form action="/view_image" method="get">
+                <input type="text" name="codigo" placeholder="Ej: abc123" required>
+                <br>
+                <button type="submit">Ver postales</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    '''
 
 @app.route('/search')
 def buscar():
@@ -69,25 +121,100 @@ def view_image():
         return f"<h2>❌ No se encontraron postales para el código '{codigo}'</h2><a href='/'>Volver al inicio</a>"
 
     html = f"""
-    <h2>📸 Tu postal personalizada</h2>
-    <form action='/checkout_multiple' method='POST'>
-        <input type='hidden' name='codigo' value='{codigo}'>
-        <div style='display:flex; flex-wrap:wrap; gap:20px; justify-content:center;'>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Tu postal personalizada</title>
+        <style>
+            body {{
+                background-color: #111;
+                color: white;
+                font-family: sans-serif;
+                text-align: center;
+            }}
+            .grid {{
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 20px;
+                margin-bottom: 40px;
+            }}
+            img {{
+                max-width: 280px;
+                border: 2px solid white;
+                border-radius: 8px;
+            }}
+            .seccion {{
+                background-color: #222;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 30px auto;
+                width: 90%;
+                max-width: 500px;
+            }}
+            input, select, button {{
+                padding: 10px;
+                font-size: 16px;
+                border-radius: 5px;
+                margin: 5px 0;
+                width: 100%;
+            }}
+        </style>
+    </head>
+    <body>
+        <h2>📸 Tu postal personalizada</h2>
+        <form action="/checkout_multiple" method="POST">
+            <input type="hidden" name="codigo" value="{codigo}">
+            <div class="grid">
     """
 
     for img in archivos:
         html += f"""
-        <div style='text-align:center;'>
-            <img src='/static/postales_generadas/{img}' width='200'><br>
-            <label><input type='checkbox' name='postal' value='{img}'> Seleccionar</label>
+        <div>
+            <img src="/static/postales_generadas/{img}">
+            <br><label><input type="checkbox" name="postal" value="{img}"> Seleccionar</label>
         </div>
         """
 
     html += """
-        </div><br>
-        <input type='email' name='email' placeholder='Tu correo electrónico' required><br><br>
-        <button type='submit'>💳 Pagar y recibir postales</button>
-    </form>
+            </div><br>
+            <input type="email" name="email" placeholder="Tu correo electrónico" required>
+            <br><br>
+            <button type="submit">💳 Pagar y recibir postales</button>
+        </form>
+
+        <div class="seccion">
+            <h3>🍷 Pedir vino a domicilio</h3>
+            <form action="/pedido_vino" method="POST">
+                <input type="text" name="nombre" placeholder="Nombre completo" required><br>
+                <input type="text" name="direccion" placeholder="Dirección completa" required><br>
+                <input type="text" name="telefono" placeholder="Teléfono" required><br>
+                <input type="email" name="email" placeholder="Correo electrónico" required><br><br>
+
+                <label>Producto 1:</label>
+                <select name="producto1">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="vino_tinto">Vino Tinto</option>
+                    <option value="vino_blanco">Vino Blanco</option>
+                    <option value="vino_rosado">Vino Rosado</option>
+                </select>
+                <input name="cantidad1" type="number" min="0" value="0"><br><br>
+
+                <label>Producto 2:</label>
+                <select name="producto2">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="vino_tinto">Vino Tinto</option>
+                    <option value="vino_blanco">Vino Blanco</option>
+                    <option value="vino_rosado">Vino Rosado</option>
+                </select>
+                <input name="cantidad2" type="number" min="0" value="0"><br><br>
+
+                <textarea name="comentarios" placeholder="Comentarios (opcional)" style="width:100%; height:60px;"></textarea><br>
+                <button type="submit">💳 Pagar y pedir vinos</button>
+            </form>
+        </div>
+    </body>
+    </html>
     """
 
     return html
