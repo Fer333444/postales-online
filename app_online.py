@@ -428,12 +428,15 @@ def view_image(codigo):
     <html>
     <head>
         <title>Tu postal personalizada</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {{
                 background-color: #111;
                 color: white;
                 text-align: center;
                 font-family: sans-serif;
+                margin: 0;
+                padding: 0;
             }}
             .grid {{
                 display: flex;
@@ -443,7 +446,8 @@ def view_image(codigo):
                 margin-bottom: 40px;
             }}
             img {{
-                max-width: 280px;
+                max-width: 100%;
+                height: auto;
                 border: 2px solid white;
                 border-radius: 8px;
             }}
@@ -455,18 +459,20 @@ def view_image(codigo):
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 10px 0;
+                margin: 20px auto;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
                 display: inline-block;
+                font-size: 16px;
             }}
-            input[type="email"], input[type="number"] {{
+            input[type="email"], select {{
                 padding: 10px;
                 font-size: 16px;
                 border-radius: 5px;
                 margin-top: 10px;
                 width: 100%;
+                max-width: 300px;
             }}
         </style>
     </head>
@@ -477,7 +483,7 @@ def view_image(codigo):
         </div>
 
         <div>
-            <h3>💌 Recibe tu postal seleccionada por email tras el pago</h3>
+            <h3>📬 Recibe tu postal seleccionada por email tras el pago</h3>
             <form action="/checkout" method="POST">
                 <input type="hidden" name="codigo" value="{codigo}">
                 <input type="email" name="email" placeholder="Tu correo electrónico" required><br>
@@ -493,13 +499,17 @@ def view_image(codigo):
     '''
 
     for vino in vinos:
-        nombre = vino.replace(".jpg", "").replace("_", " ").title()
+        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
-                <div>
-                    <img src="/static/Vinos/{vino}">
-                    <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
-                    <input type="number" name="cantidad_{vino}" min="0" value="0">
-                </div>
+            <div>
+                <img src="/static/Vinos/{vino}">
+                <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
+                <label>Cantidad:
+                    <select name="cantidad_{vino}">
+                        {''.join(f'<option value="{i}">{i}</option>' for i in range(11))}
+                    </select>
+                </label>
+            </div>
         '''
 
     html += f'''
