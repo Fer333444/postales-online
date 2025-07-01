@@ -442,11 +442,17 @@ def view_image(codigo):
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: center;
-                gap: 20px;
-                margin-bottom: 40px;
+                gap: 16px;
+                margin-bottom: 30px;
+            }}
+            .item {{
+                max-width: 300px;
+                background-color: #222;
+                padding: 10px;
+                border-radius: 10px;
             }}
             img {{
-                max-width: 100%;
+                width: 100%;
                 height: auto;
                 border: 2px solid white;
                 border-radius: 8px;
@@ -459,7 +465,7 @@ def view_image(codigo):
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 20px auto;
+                margin: 10px auto;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
@@ -471,15 +477,14 @@ def view_image(codigo):
                 font-size: 16px;
                 border-radius: 5px;
                 margin-top: 10px;
-                width: 100%;
-                max-width: 300px;
+                width: 90%;
             }}
         </style>
     </head>
     <body>
         <h2>📸 Tu postal personalizada</h2>
         <div class="grid">
-            {''.join(f'<div><img src="/static/postales_generadas/{file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
+            {''.join(f'<div class="item"><img src="/static/postales_generadas/{file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
         </div>
 
         <div>
@@ -501,15 +506,13 @@ def view_image(codigo):
     for vino in vinos:
         nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
-            <div>
-                <img src="/static/Vinos/{vino}">
-                <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
-                <label>Cantidad:
+                <div class="item">
+                    <img src="/static/Vinos/{vino}">
+                    <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
                     <select name="cantidad_{vino}">
-                        {''.join(f'<option value="{i}">{i}</option>' for i in range(11))}
+                        {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
                     </select>
-                </label>
-            </div>
+                </div>
         '''
 
     html += f'''
