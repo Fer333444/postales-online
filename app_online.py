@@ -137,7 +137,7 @@ def view_image():
     if os.path.exists(vinos_path):
         vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
 
-   html = f"""
+       html = f"""  # ✅ alineado correctamente con el bloque anterior
 <!DOCTYPE html>
 <html>
 <head>
