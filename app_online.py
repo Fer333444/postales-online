@@ -286,6 +286,8 @@ def checkout_multiple():
         return "Faltan datos", 400
 
     try:
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
         line_items = [
             {
                 "price_data": {
