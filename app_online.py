@@ -137,105 +137,121 @@ def view_image():
     if os.path.exists(vinos_path):
         vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Postales y Vinos</title>
-        <style>
-            body {{
-                background-color: #111;
-                color: white;
-                font-family: sans-serif;
-                text-align: center;
-            }}
-            .grid {{
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 20px;
-                margin: 20px auto;
-            }}
-            img {{
-                max-width: 240px;
-                border: 2px solid white;
-                border-radius: 8px;
-            }}
-            .seccion {{
-                background-color: #222;
-                padding: 20px;
-                margin: 30px auto;
-                border-radius: 10px;
-                width: 95%;
-                max-width: 900px;
-            }}
-            input, select, button {{
-                padding: 10px;
-                font-size: 16px;
-                margin: 5px 0;
-                width: 100%;
-                border-radius: 5px;
-            }}
-        </style>
-    </head>
-    <body>
-        <h1>📸 Tu postal personalizada</h1>
-        <form action="/checkout_combined" method="POST">
-            <input type="hidden" name="codigo" value="{codigo}">
+   html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Postales y Vinos</title>
+    <style>
+        body {{
+            background-color: #111;
+            color: white;
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+        }}
+        h2, h3 {{
+            margin-top: 20px;
+        }}
+        .grid {{
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 16px;
+        }}
+        img {{
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }}
+        .item {{
+            background-color: #222;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 240px;
+        }}
+        .seccion {{
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 16px auto;
+            width: 90%;
+            max-width: 900px;
+        }}
+        input, select, button {{
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 10px;
+            width: 100%;
+            border-radius: 5px;
+            border: none;
+        }}
+        button {{
+            background-color: gold;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+        }}
+    </style>
+</head>
+<body>
+    <form action="/checkout_combined" method="POST">
+        <input type="hidden" name="codigo" value="{codigo}">
 
-            <div class="seccion">
-                <h2>📸 Selecciona postales</h2>
-                <div class="grid">
-    """
+        <div class="seccion">
+            <h2>📸 Selecciona postales</h2>
+            <div class="grid">
+"""
 
-    for img in archivos:
-        html += f"""
-        <div>
-            <img src="/static/postales_generadas/{img}"><br>
-            <input type="checkbox" name="postal" value="{img}"> Seleccionar
+# Postales generadas
+for img in archivos:
+    html += f"""
+        <div class="item">
+            <img src="/static/postales_generadas/{img}">
+            <label><input type="checkbox" name="postal" value="{img}"> Seleccionar</label>
         </div>
-        """
-
-    html += """
-                </div>
-            </div>
-
-            <div class="seccion">
-                <h2>🍷 Selecciona vinos</h2>
-                <div class="grid">
     """
 
-    for vino in vinos:
-        nombre_vino = vino.replace('_', ' ').replace('.jpg', '').replace('.png', '').title()
-        html += f"""
-        <div>
-            <img src="/static/Vinos/{vino}"><br>
-            <label>
-                <input type="checkbox" name="vino" value="{vino}"> {nombre_vino}
-            </label>
+# Sección de vinos
+html += """
+        </div>
+    </div>
+
+    <div class="seccion">
+        <h2>🍷 Selecciona vinos</h2>
+        <div class="grid">
+"""
+
+for vino in vinos:
+    nombre = vino.replace("_", " ").replace(".jpg", "").replace(".png", "").title()
+    html += f"""
+        <div class="item">
+            <img src="/static/Vinos/{vino}">
+            <p><strong>{nombre}</strong></p>
+            <label><input type="checkbox" name="vino" value="{vino}"> Añadir</label><br>
             <input type="number" name="cantidad_{vino}" min="0" value="0">
         </div>
-        """
-
-    html += """
-                </div>
-            </div>
-
-            <div class="seccion">
-                <h3>💌 Datos del cliente</h3>
-                <input type="text" name="nombre" placeholder="Nombre completo" required><br>
-                <input type="text" name="direccion" placeholder="Dirección" required><br>
-                <input type="text" name="telefono" placeholder="Teléfono" required><br>
-                <input type="email" name="email" placeholder="Correo electrónico" required><br>
-                <button type="submit">💳 Pagar y confirmar pedido</button>
-            </div>
-        </form>
-    </body>
-    </html>
     """
 
-    return html
+# Sección de datos del cliente
+html += """
+        </div>
+    </div>
 
+    <div class="seccion">
+        <h2>📋 Datos del cliente</h2>
+        <input type="text" name="nombre" placeholder="Nombre completo" required>
+        <input type="text" name="direccion" placeholder="Dirección completa" required>
+        <input type="text" name="telefono" placeholder="Teléfono" required>
+        <input type="email" name="email" placeholder="Correo electrónico" required>
+        <button type="submit">💳 Pagar y confirmar pedido</button>
+    </div>
+</form>
+</body>
+</html>
+"""
 @app.route('/subir_postal', methods=['GET', 'POST'])
 def subir_postal():
     if request.method == 'GET':
@@ -339,94 +355,75 @@ def checkout_multiple():
         return f"❌ Error creando checkout: {str(e)}", 500
 @app.route('/checkout_combined', methods=['POST'])
 def checkout_combined():
-    try:
-        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # O reemplaza con tu clave directa de prueba
+    from dotenv import load_dotenv
+    load_dotenv()  # para Render o local
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
-        codigo = request.form.get("codigo", "")
-        email = request.form.get("email")
-        nombre = request.form.get("nombre")
-        direccion = request.form.get("direccion")
-        telefono = request.form.get("telefono")
-        comentarios = request.form.get("comentarios", "")
+    codigo = request.form.get("codigo")
+    email = request.form.get("email")
+    nombre = request.form.get("nombre")
+    direccion = request.form.get("direccion")
+    telefono = request.form.get("telefono")
 
-        postales = request.form.getlist("postal")
-        vinos = request.form.getlist("vino")
+    postales = request.form.getlist("postal")
+    vinos = request.form.getlist("vino")
 
-        if not email or not nombre or not direccion or not telefono:
-            return "Faltan datos de cliente", 400
+    productos = []
 
-        line_items = []
-        productos_json = []
+    line_items = []
 
-        # Añadir postales
-        for p in postales:
+    for p in postales:
+        productos.append({
+            "tipo": "postal",
+            "codigo": codigo,
+            "plantilla": p
+        })
+        line_items.append({
+            "price_data": {
+                "currency": "eur",
+                "product_data": {"name": f"Postal {p}"},
+                "unit_amount": 300
+            },
+            "quantity": 1
+        })
+
+    for v in vinos:
+        cantidad = int(request.form.get(f"cantidad_{v}", 0))
+        if cantidad > 0:
+            productos.append({
+                "tipo": "vino",
+                "producto": v,
+                "cantidad": cantidad
+            })
             line_items.append({
                 "price_data": {
                     "currency": "eur",
-                    "product_data": {"name": f"Postal {p}"},
-                    "unit_amount": 300
+                    "product_data": {"name": v.replace("_", " ").title()},
+                    "unit_amount": 1000
                 },
-                "quantity": 1
-            })
-            productos_json.append({
-                "tipo": "postal",
-                "codigo": codigo,
-                "plantilla": p
+                "quantity": cantidad
             })
 
-        # Añadir vinos
-        precios_vino = {
-            "vino_tinto.jpg": ("Vino Tinto", 1200),
-            "vino_rosado.jpg": ("Vino Rosado", 1300),
-            "vino_blanco.jpg": ("Vino Blanco", 1250)
+    if not line_items:
+        return "Debes seleccionar al menos un producto", 400
+
+    session = stripe.checkout.Session.create(
+        customer_email=email,
+        payment_method_types=["card"],
+        line_items=line_items,
+        mode="payment",
+        success_url="https://postales-online.onrender.com/success",
+        cancel_url="https://postales-online.onrender.com/cancel",
+        metadata={
+            "tipo": "combo",
+            "correo": email,
+            "productos_json": json.dumps(productos),
+            "direccion": direccion,
+            "telefono": telefono,
+            "nombre": nombre
         }
-
-        for vino in vinos:
-            cantidad = int(request.form.get(f"cantidad_{vino}", 0))
-            if cantidad > 0 and vino in precios_vino:
-                nombre_vino, precio = precios_vino[vino]
-                line_items.append({
-                    "price_data": {
-                        "currency": "eur",
-                        "product_data": {"name": nombre_vino},
-                        "unit_amount": precio
-                    },
-                    "quantity": cantidad
-                })
-                productos_json.append({
-                    "tipo": "vino",
-                    "producto": vino,
-                    "cantidad": cantidad
-                })
-
-        if not line_items:
-            return "No seleccionaste ningún producto", 400
-
-        # Crear sesión de pago
-        session = stripe.checkout.Session.create(
-            customer_email=email,
-            payment_method_types=["card"],
-            line_items=line_items,
-            mode="payment",
-            success_url="https://postales-online.onrender.com/success",
-            cancel_url="https://postales-online.onrender.com/cancel",
-            metadata={
-                "tipo_compra": "combo",
-                "correo": email,
-                "codigo": codigo,
-                "nombre": nombre,
-                "direccion": direccion,
-                "telefono": telefono,
-                "comentarios": comentarios,
-                "productos": json.dumps(productos_json)
-            }
-        )
-        return redirect(session.url, code=303)
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return f"❌ Error creando pago combinado: {str(e)}", 500
+    )
+    return redirect(session.url, code=303)
 @app.route('/pedido_vino', methods=['GET', 'POST'])
 def pedido_vino():
     if request.method == 'GET':
