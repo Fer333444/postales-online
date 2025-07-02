@@ -546,6 +546,69 @@ def view_image(codigo):
     </html>
     '''
     return html
+@app.route('/admin_pedidos')
+def admin_pedidos():
+    token = request.args.get("token")
+    if token != "secreto123":
+        return "Acceso denegado", 403
+
+    if not os.path.exists("pedidos.json"):
+        return "<h2>No hay pedidos registrados</h2>"
+
+    with open("pedidos.json") as f:
+        pedidos = json.load(f)
+
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Panel de Pedidos</title>
+        <style>
+            body { font-family: sans-serif; background-color: #111; color: white; padding: 20px; }
+            h2 { text-align: center; color: gold; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #444; padding: 10px; text-align: left; }
+            th { background-color: #222; color: white; }
+            tr:nth-child(even) { background-color: #222; }
+            .producto { margin-bottom: 5px; }
+        </style>
+    </head>
+    <body>
+        <h2>📦 Pedidos Recibidos</h2>
+        <table>
+            <tr>
+                <th>Fecha</th>
+                <th>Correo</th>
+                <th>Tipo</th>
+                <th>Productos</th>
+                <th>Dirección</th>
+                <th>Teléfono</th>
+            </tr>
+    '''
+
+    for pedido in pedidos:
+        html += f'''
+        <tr>
+            <td>{pedido.get("fecha", "")}</td>
+            <td>{pedido.get("correo", "")}</td>
+            <td>{pedido.get("tipo", "")}</td>
+            <td>
+        '''
+        for p in pedido.get("productos", []):
+            if isinstance(p, str):
+                html += f'<div class="producto">{p}</div>'
+            elif isinstance(p, dict):
+                html += f'<div class="producto">{p.get("producto", "")} x {p.get("cantidad", 1)}</div>'
+        html += f'''
+            </td>
+            <td>{pedido.get("direccion", "")}</td>
+            <td>{pedido.get("telefono", "")}</td>
+        </tr>
+        '''
+
+    html += "</table></body></html>"
+    return html
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
