@@ -322,86 +322,114 @@ def webhook_stripe():
 @app.route('/success')
 def success():
     codigo = request.args.get("codigo", "")
-    postal = request.args.get("postal", "")
+    postal = request.args.get("postal", "")  # postal seleccionada
 
-    if not postal:
-        return f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Pago exitoso</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {{
-                    background-color: #111;
-                    color: white;
-                    font-family: sans-serif;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100vh;
-                    text-align: center;
-                    padding: 20px;
-                }}
-                .mensaje {{
-                    background-color: #222;
-                    border: 2px solid #2ecc71;
-                    padding: 30px;
-                    border-radius: 10px;
-                    max-width: 400px;
-                    box-shadow: 0 0 10px #2ecc71;
-                }}
-                h2 {{
-                    color: #2ecc71;
-                }}
-                a {{
-                    color: #2ecc71;
-                    font-weight: bold;
-                    text-decoration: none;
-                    margin-top: 20px;
-                    display: inline-block;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="mensaje">
-                <h2>✅ ¡Pago exitoso!</h2>
-                <p>Tu postal ha sido procesada correctamente.</p>
-                <p><strong>Pero no se pudo identificar el archivo.</strong></p>
-                <a href="/">⏎ Volver al inicio</a>
-            </div>
-        </body>
-        </html>
-        '''
-
-    enlace = f"/static/postales_generadas/{postal}"
+    enlace = f"/static/postales_generadas/{postal}" if postal else ""
 
     return f'''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Postal lista para descargar</title>
+        <meta charset="utf-8">
+        <title>✅ Pago exitoso</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body {{ background-color: #111; color: white; text-align: center; font-family: sans-serif; }}
-            .descargar {{
-                background-color: #2ecc71;
+            body {{
+                background-color: #111;
                 color: white;
-                padding: 12px 25px;
-                border-radius: 6px;
-                text-decoration: none;
-                font-size: 18px;
+                font-family: 'Segoe UI', sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+            }}
+
+            .card {{
+                background-color: #1e1e1e;
+                padding: 40px;
+                border-radius: 12px;
+                text-align: center;
+                box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+                border: 2px solid #2ecc71;
+            }}
+
+            .checkmark {{
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                display: block;
+                stroke-width: 2;
+                stroke: #2ecc71;
+                stroke-miterlimit: 10;
+                margin: 0 auto 20px;
+                box-shadow: inset 0px 0px 0px #2ecc71;
+                animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+            }}
+
+            .checkmark__circle {{
+                stroke-dasharray: 166;
+                stroke-dashoffset: 166;
+                stroke-width: 2;
+                stroke-miterlimit: 10;
+                stroke: #2ecc71;
+                fill: none;
+                animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+            }}
+
+            .checkmark__check {{
+                transform-origin: 50% 50%;
+                stroke-dasharray: 48;
+                stroke-dashoffset: 48;
+                animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+            }}
+
+            @keyframes stroke {{
+                100% {{ stroke-dashoffset: 0; }}
+            }}
+
+            @keyframes scale {{
+                0%, 100% {{ transform: none; }}
+                50% {{ transform: scale3d(1.1, 1.1, 1); }}
+            }}
+
+            @keyframes fill {{
+                100% {{ box-shadow: inset 0px 0px 0px 30px #2ecc71; }}
+            }}
+
+            a.button {{
                 display: inline-block;
                 margin-top: 20px;
+                background: #2ecc71;
+                color: white;
+                padding: 12px 24px;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: bold;
+            }}
+
+            .preview {{
+                margin-top: 20px;
+            }}
+
+            .preview img {{
+                max-width: 280px;
+                border-radius: 10px;
+                border: 2px solid white;
             }}
         </style>
     </head>
     <body>
-        <h2>✅ ¡Pago exitoso!</h2>
-        <p>Tu postal con código <strong>{codigo}</strong> ha sido procesada.</p>
-        <img src="{enlace}" style="max-width:300px; border:2px solid white; border-radius:8px;"><br>
-        <a class="descargar" href="{enlace}" download>⬇️ Descargar postal</a>
-        <p><a href="/">Volver al inicio</a></p>
+        <div class="card">
+            <svg class="checkmark" viewBox="0 0 52 52">
+              <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+              <path class="checkmark__check" fill="none" d="M14 27l7 7 16-16"/>
+            </svg>
+            <h2>✅ ¡Pago exitoso!</h2>
+            <p>Tu postal ha sido procesada correctamente.</p>
+            {'<div class="preview"><img src="' + enlace + '"><br><a class="button" href="' + enlace + '" download>⬇️ Descargar postal</a></div>' if enlace else '<p>Pero no se pudo identificar el archivo.</p>'}
+            <p><a class="button" href="/">↩️ Volver al inicio</a></p>
+        </div>
     </body>
     </html>
     '''
