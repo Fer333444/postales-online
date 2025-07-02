@@ -124,9 +124,9 @@ def pagar_vino():
         return f"Error leyendo los datos de vinos: {e}", 400
 
     precios = {
-        "vino_tinto.jpg": 1200,     # 12.00 €
-        "vino_rosado.jpg": 1100,    # 11.00 €
-        "vino_blanco.jpg": 1000     # 10.00 €
+        "vino_tinto.jpg": 120,     # 12.00 €
+        "vino_rosado.jpg": 110,    # 11.00 €
+        "vino_blanco.jpg": 100     # 10.00 €
     }
 
     line_items = []
