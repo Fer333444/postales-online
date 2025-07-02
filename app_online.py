@@ -319,17 +319,60 @@ def webhook_stripe():
                 json.dump(pedidos_actuales, f, indent=2)
 
     return '', 200
-
 @app.route('/success')
 def success():
     codigo = request.args.get("codigo", "")
-    postal = request.args.get("postal", "")  # postal seleccionada
+    postal = request.args.get("postal", "")
 
     if not postal:
         return f'''
-        <h2>✅ ¡Pago exitoso!</h2>
-        <p>Tu postal ha sido procesada, pero no se pudo identificar el archivo.</p>
-        <a href="/">Volver al inicio</a>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Pago exitoso</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{
+                    background-color: #111;
+                    color: white;
+                    font-family: sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    text-align: center;
+                    padding: 20px;
+                }}
+                .mensaje {{
+                    background-color: #222;
+                    border: 2px solid #2ecc71;
+                    padding: 30px;
+                    border-radius: 10px;
+                    max-width: 400px;
+                    box-shadow: 0 0 10px #2ecc71;
+                }}
+                h2 {{
+                    color: #2ecc71;
+                }}
+                a {{
+                    color: #2ecc71;
+                    font-weight: bold;
+                    text-decoration: none;
+                    margin-top: 20px;
+                    display: inline-block;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="mensaje">
+                <h2>✅ ¡Pago exitoso!</h2>
+                <p>Tu postal ha sido procesada correctamente.</p>
+                <p><strong>Pero no se pudo identificar el archivo.</strong></p>
+                <a href="/">⏎ Volver al inicio</a>
+            </div>
+        </body>
+        </html>
         '''
 
     enlace = f"/static/postales_generadas/{postal}"
