@@ -552,11 +552,16 @@ def admin_pedidos():
     if token != "secreto123":
         return "Acceso denegado", 403
 
-    if not os.path.exists("pedidos.json"):
+    PEDIDOS_FILE = os.path.join(BASE, "pedidos.json")
+
+    if not os.path.exists(PEDIDOS_FILE):
         return "<h2>No hay pedidos registrados</h2>"
 
-    with open("pedidos.json") as f:
-        pedidos = json.load(f)
+    try:
+        with open(PEDIDOS_FILE) as f:
+            pedidos = json.load(f)
+    except Exception as e:
+        return f"<h2>Error leyendo pedidos:</h2><pre>{str(e)}</pre>"
 
     html = '''
     <!DOCTYPE html>
