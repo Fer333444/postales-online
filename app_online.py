@@ -4,6 +4,7 @@ import time
 from flask import Flask, request, jsonify, redirect
 from PIL import Image, UnidentifiedImageError
 from io import BytesIO
+from datetime import datetime
 from flask import render_template_string
 import cloudinary
 import cloudinary.uploader
@@ -275,6 +276,7 @@ def webhook_stripe():
     payload = request.data
     sig_header = request.headers.get('Stripe-Signature')
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
@@ -283,11 +285,38 @@ def webhook_stripe():
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         email = session.get('customer_email')
-        postal_filename = session['metadata'].get('postal')  # ✅ la postal seleccionada
+        metadata = session.get('metadata', {})
 
-        if email and postal_filename:
+        # Caso POSTAL: enviar email con enlace
+        if metadata.get("postal"):
+            postal_filename = metadata["postal"]
             enlace = f"https://postales-online.onrender.com/static/postales_generadas/{postal_filename}"
             enviar_email_profesional(email, enlace)
+
+        # Caso VINO: guardar pedido en pedidos.json
+        elif metadata.get("tipo") == "vino":
+            pedido = {
+                "fecha": datetime.utcnow().isoformat(),
+                "correo": metadata.get("correo"),
+                "tipo": "vino",
+                "productos": json.loads(metadata.get("productos_json", "[]")),
+                "direccion": metadata.get("direccion", ""),
+                "telefono": metadata.get("telefono", "")
+            }
+
+            pedidos_path = os.path.join(BASE, "pedidos.json")
+            pedidos_actuales = []
+            if os.path.exists(pedidos_path):
+                with open(pedidos_path) as f:
+                    try:
+                        pedidos_actuales = json.load(f)
+                    except:
+                        pedidos_actuales = []
+
+            pedidos_actuales.append(pedido)
+
+            with open(pedidos_path, "w") as f:
+                json.dump(pedidos_actuales, f, indent=2)
 
     return '', 200
 
