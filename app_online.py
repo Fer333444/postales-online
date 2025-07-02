@@ -82,7 +82,9 @@ def formulario_vino():
     if not vinos_seleccionados:
         return "<h2>❌ No se seleccionaron vinos</h2><a href='/'>Volver</a>", 400
 
-    html = '''
+    vinos_json = json.dumps(cantidades)
+
+    html = f'''
     <!DOCTYPE html>
     <html>
     <head>
@@ -90,7 +92,7 @@ def formulario_vino():
         <title>Confirmar pedido de vinos</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-            html, body {
+            html, body {{
                 background-color: #111;
                 color: white;
                 font-family: 'Segoe UI', sans-serif;
@@ -101,8 +103,8 @@ def formulario_vino():
                 align-items: center;
                 height: 100vh;
                 overflow: hidden;
-            }
-            .formulario {
+            }}
+            .formulario {{
                 background-color: #222;
                 padding: 25px 20px;
                 border-radius: 15px;
@@ -112,20 +114,20 @@ def formulario_vino():
                 opacity: 0;
                 transform: translateY(20px);
                 animation: fadeInSlide 0.7s ease-out forwards;
-            }
-            @keyframes fadeInSlide {
-                to {
+            }}
+            @keyframes fadeInSlide {{
+                to {{
                     opacity: 1;
                     transform: translateY(0);
-                }
-            }
-            .formulario h2 {
+                }}
+            }}
+            .formulario h2 {{
                 margin-top: 0;
                 margin-bottom: 20px;
                 color: #ffcc00;
                 font-size: 22px;
-            }
-            input, button {
+            }}
+            input, button {{
                 width: 100%;
                 padding: 12px;
                 margin: 10px 0;
@@ -133,29 +135,29 @@ def formulario_vino():
                 border: none;
                 font-size: 16px;
                 box-sizing: border-box;
-            }
-            input {
+            }}
+            input {{
                 background-color: #333;
                 color: white;
-            }
-            input:focus {
+            }}
+            input:focus {{
                 outline: 2px solid #2ecc71;
-            }
-            button {
+            }}
+            button {{
                 background-color: gold;
                 color: black;
                 font-weight: bold;
                 cursor: pointer;
-            }
-            button:hover {
+            }}
+            button:hover {{
                 background-color: #f5d100;
-            }
+            }}
         </style>
     </head>
     <body>
         <form method="POST" action="/pagar_vino" class="formulario">
             <h2>🍷 Confirmar pedido de vinos</h2>
-            <input type="hidden" name="vinos_json" value=''' + json.dumps(cantidades).replace("'", "&quot;") + '''>
+            <input type="hidden" name="vinos_json" value='{vinos_json}'>
             <input name="nombre" placeholder="Nombre completo" required>
             <input name="direccion" placeholder="Dirección completa" required>
             <input name="telefono" placeholder="Teléfono" required>
