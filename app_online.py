@@ -212,7 +212,7 @@ def pagar_vino():
             payment_method_types=["card"],
             line_items=line_items,
             mode="payment",
-            success_url="https://postales-online.onrender.com/success",
+            success_url="https://postales-online.onrender.com/success_vino",
             cancel_url="https://postales-online.onrender.com/cancel",
             metadata={
                 "tipo": "vino",
@@ -793,6 +793,64 @@ def admin_pedidos():
 
     html += "</table></body></html>"
     return html
+@app.route('/success_vino')
+def success_vino():
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>✅ Pedido confirmado</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {
+                background-color: #111;
+                color: white;
+                font-family: 'Segoe UI', sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+            }
+            .card {
+                background-color: #1e1e1e;
+                padding: 40px;
+                border-radius: 12px;
+                text-align: center;
+                box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+                border: 2px solid #2ecc71;
+            }
+            h2 {
+                color: #2ecc71;
+                font-size: 24px;
+                margin-bottom: 10px;
+            }
+            p {
+                margin: 10px 0;
+            }
+            a.button {
+                display: inline-block;
+                margin-top: 20px;
+                background: #2ecc71;
+                color: white;
+                padding: 12px 24px;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>✅ ¡Pago exitoso!</h2>
+            <p>Tu pedido de vinos ha sido recibido correctamente.</p>
+            <p>Te contactaremos pronto para confirmar el envío.</p>
+            <a class="button" href="/">↩️ Volver al inicio</a>
+        </div>
+    </body>
+    </html>
+    '''
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
