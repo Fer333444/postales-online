@@ -514,43 +514,46 @@ def view_image(codigo):
                 -webkit-touch-callout: none;
                 user-select: none;
             }}
-            .grid {{
+            .scroll-container {{
                 display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 16px;
-                margin-bottom: 40px;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                gap: 12px;
                 padding: 10px;
             }}
+            .scroll-container::-webkit-scrollbar {{
+                display: none;
+            }}
             .postal-wrapper {{
+                flex: 0 0 auto;
+                scroll-snap-align: center;
                 background-color: #222;
                 border-radius: 12px;
                 padding: 8px;
-                max-width: 300px;
-                width: 90%;
+                width: 160px;
             }}
             img {{
                 width: 100%;
                 height: auto;
-                border-radius: 10px;
+                border-radius: 8px;
                 pointer-events: none;
                 -webkit-user-drag: none;
             }}
             label {{
                 display: block;
-                margin-top: 10px;
+                margin-top: 6px;
             }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 10px 0;
+                margin: 15px 0;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
                 display: inline-block;
             }}
-            input[type="email"], select, input[type="number"] {{
+            input[type="email"], select, input[type="number"], input[type="text"] {{
                 padding: 10px;
                 font-size: 16px;
                 border-radius: 5px;
@@ -559,12 +562,28 @@ def view_image(codigo):
                 max-width: 300px;
                 border: none;
             }}
-            form {{ margin-bottom: 40px; }}
+            form {{
+                margin-bottom: 40px;
+            }}
+            hr {{
+                margin: 40px 0;
+                border-color: #444;
+            }}
+            @media (min-width: 768px) {{
+                .scroll-container {{
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    overflow: visible;
+                }}
+                .postal-wrapper {{
+                    width: 200px;
+                }}
+            }}
         </style>
     </head>
     <body oncontextmenu="return false">
         <h2>📸 Tu postal personalizada</h2>
-        <div class="grid">
+        <div class="scroll-container">
             {''.join(f'<div class="postal-wrapper"><img src="/static/postales_generadas/{file}" alt="postal {file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
         </div>
 
@@ -577,11 +596,11 @@ def view_image(codigo):
             </form>
         </div>
 
-        <hr style="margin: 40px 0; border-color: #444">
+        <hr>
 
         <h2>🍷 Selecciona vinos</h2>
         <form method="POST" action="/formulario_vino">
-            <div class="grid">
+            <div class="scroll-container">
     '''
 
     for vino in vinos:
