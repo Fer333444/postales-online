@@ -561,8 +561,6 @@ def buscar():
     codigo = request.args.get("codigo", "").strip()
     return redirect(f"/view_image/{codigo}")
 
-# Fragmento completo actualizado para `view_image/<codigo>`
-
 @app.route('/view_image/<codigo>')
 def view_image(codigo):
     data = urls_cloudinary.get(codigo)
@@ -574,10 +572,8 @@ def view_image(codigo):
 
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     vinos_path = os.path.join(BASE, "static", "Vinos")
-    camisetas_path = os.path.join(BASE, "static", "Camisetas")
     postales_multiples = []
     vinos = []
-    camisetas = []
 
     if os.path.exists(postales_path):
         for file in os.listdir(postales_path):
@@ -585,51 +581,112 @@ def view_image(codigo):
                 postales_multiples.append(file)
 
     if os.path.exists(vinos_path):
-        vinos = [f for f in os.listdir(vinos_path) if f.endswith(('.jpg', '.png'))]
-
-    if os.path.exists(camisetas_path):
-        camisetas = [f for f in os.listdir(camisetas_path) if f.endswith(('.jpg', '.png'))]
+        vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
 
     html = f'''
     <!DOCTYPE html>
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tu postal personalizada</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-            body {{ background-color: #111; color: white; font-family: sans-serif; text-align: center; }}
-            .scroll-container {{ display: flex; overflow-x: auto; gap: 12px; padding: 10px; justify-content: center; }}
-            .postal-wrapper {{ background-color: #222; border-radius: 12px; padding: 8px; width: 160px; flex: 0 0 auto; border: 2px solid transparent; }}
-            .postal-wrapper.selected {{ border-color: #2ecc71; }}
-            img {{ width: 100%; border-radius: 8px; }}
-            .precio-label {{ color: #2ecc71; font-weight: bold; }}
-            .shopify-button {{ background-color: #2ecc71; color: white; padding: 10px 20px; margin: 10px; border: none; border-radius: 6px; }}
-            select {{ padding: 5px; border-radius: 5px; }}
-            input[type="checkbox"] {{ transform: scale(1.2); margin: 10px; }}
+            html, body {{
+                margin: 0;
+                padding: 0;
+                background-color: #111;
+                color: white;
+                font-family: sans-serif;
+                text-align: center;
+                touch-action: manipulation;
+                -webkit-user-select: none;
+                -webkit-touch-callout: none;
+                user-select: none;
+            }}
+            .scroll-container {{
+                display: flex;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                gap: 12px;
+                padding: 10px;
+            }}
+            .scroll-container::-webkit-scrollbar {{
+                display: none;
+            }}
+            .postal-wrapper {{
+                flex: 0 0 auto;
+                scroll-snap-align: center;
+                background-color: #222;
+                border-radius: 12px;
+                padding: 8px;
+                width: 160px;
+            }}
+            img {{
+                width: 100%;
+                height: auto;
+                border-radius: 8px;
+                pointer-events: none;
+                -webkit-user-drag: none;
+            }}
+            label {{
+                display: block;
+                margin-top: 6px;
+            }}
+            .shopify-button {{
+                background-color: #2ecc71;
+                color: white;
+                padding: 10px 20px;
+                margin: 15px 0;
+                border: none;
+                border-radius: 5px;
+                text-decoration: none;
+                display: inline-block;
+            }}
+            input[type="email"], select, input[type="number"], input[type="text"] {{
+                padding: 10px;
+                font-size: 16px;
+                border-radius: 5px;
+                margin-top: 10px;
+                width: 90%;
+                max-width: 300px;
+                border: none;
+            }}
+            form {{
+                margin-bottom: 40px;
+            }}
+            hr {{
+                margin: 40px 0;
+                border-color: #444;
+            }}
+            @media (min-width: 768px) {{
+                .scroll-container {{
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    overflow: visible;
+                }}
+                .postal-wrapper {{
+                    width: 200px;
+                }}
+            }}
         </style>
     </head>
-    <body>
-        <h2>📸 Tus postales</h2>
-        <form method="POST" action="/checkout_multiple_postales">
-            <input type="hidden" name="codigo" value="{codigo}">
-            <div class="scroll-container">
-    '''
+    <body oncontextmenu="return false">
+        <h2>📸 Tu postal personalizada</h2>
+        <div class="scroll-container">
+            {''.join(f'<div class="postal-wrapper"><img src="/static/postales_generadas/{file}" alt="postal {file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
+        </div>
 
-    for file in postales_multiples:
-        html += f'''
-            <div class="postal-wrapper">
-                <img src="/static/postales_generadas/{file}" alt="{file}">
-                <label>
-                    <input type="checkbox" name="postales" value="{file}"> <span class="precio-label">✔️ 3 €</span>
-                </label>
-            </div>
-        '''
+        <div>
+            <h3>💌 Recibe tu postal seleccionada por email tras el pago</h3>
+            <form action="/checkout" method="POST">
+                <input type="hidden" name="codigo" value="{codigo}">
+                <input type="email" name="email" placeholder="Tu correo electrónico" required><br>
+                <button type="submit" class="shopify-button">💳 Pagar y recibir postal</button>
+            </form>
+        </div>
 
-    html += f'''
-            </div>
-            <button type="submit" class="shopify-button">💳 Pagar postales seleccionadas</button>
-        </form>
+        <hr>
 
-        <hr><h2>🍷 Vinos</h2>
+        <h2>🍷 Selecciona vinos</h2>
         <form method="POST" action="/formulario_vino">
             <div class="scroll-container">
     '''
@@ -637,91 +694,37 @@ def view_image(codigo):
     for vino in vinos:
         nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
-            <div class="postal-wrapper">
-                <img src="/static/Vinos/{vino}" alt="vino {nombre}" style="max-width: 180px">
-                <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label>
-                <br><select name="cantidad_{vino}">{"".join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}</select>
-            </div>
+                <div class="postal-wrapper">
+                    <img src="/static/Vinos/{vino}" alt="vino {nombre}">
+                    <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
+                    <select name="cantidad_{vino}">
+                        {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
+                    </select>
+                </div>
         '''
 
     html += f'''
             </div>
-            <button type="submit" class="shopify-button">🍷 Pedir vinos</button>
+            <button class="shopify-button" type="submit">🍷 Pedir vinos</button>
         </form>
 
-        <hr><h2>👕 Camisetas</h2>
-        <div class="scroll-container">
-    '''
-
-    for cami in camisetas:
-        nombre = cami.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
-        html += f'''
-            <div class="postal-wrapper">
-                <img src="/static/Camisetas/{cami}" alt="camiseta {nombre}" style="max-width: 180px">
-                <div style="margin-top:5px">{nombre}</div>
-            </div>
-        '''
-
-    html += '''
-        </div>
+        <script>
+            const form = document.querySelector("form[action='/checkout']");
+            form.addEventListener("submit", function(e) {{
+                const selected = document.querySelector("input[name='postal']:checked");
+                if (selected) {{
+                    const input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = "postal";
+                    input.value = selected.value;
+                    form.appendChild(input);
+                }}
+            }});
+        </script>
     </body>
     </html>
     '''
     return html
-
-@app.route('/checkout_multiple_postales', methods=['POST'])
-def checkout_multiple_postales():
-    codigo = request.form.get("codigo")
-    postales = request.form.getlist("postales")
-
-    if not codigo or not postales:
-        return "Debes seleccionar al menos una postal.", 400
-
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {"name": f"{len(postales)} postales seleccionadas"},
-                    "unit_amount": 300  # 3 € por postal
-                },
-                "quantity": len(postales)
-            }],
-            mode="payment",
-            success_url=f"https://postales-online.onrender.com/success?codigo={codigo}&postal=multiples",
-            cancel_url="https://postales-online.onrender.com/cancel"
-        )
-        return redirect(session.url, code=303)
-    except Exception as e:
-        return f"❌ Error creando el pago: {e}", 500
-@app.route('/pagar_paquete', methods=['POST'])
-def pagar_paquete():
-    codigo = request.form.get("codigo")
-
-    if not codigo:
-        return "Faltan datos para procesar el pago del paquete", 400
-
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {
-                        "name": f"Paquete de 5 postales ({codigo})"
-                    },
-                    "unit_amount": 500
-                },
-                "quantity": 1
-            }],
-            mode="payment",
-            success_url=f"https://postales-online.onrender.com/success?codigo={codigo}&postal=paquete_5",
-            cancel_url="https://postales-online.onrender.com/cancel"
-        )
-        return redirect(session.url, code=303)
-    except Exception as e:
-        return f"❌ Error creando sesión de pago del paquete: {e}", 500
 @app.route('/admin_pedidos')
 def admin_pedidos():
     token = request.args.get("token")
@@ -924,95 +927,6 @@ def success_vino():
             <h2>✅ ¡Pago exitoso!</h2>
             <p>Tu pedido de vinos ha sido recibido correctamente.</p>
             <p>Te contactaremos pronto para confirmar el envío.</p>
-            <a class="button" href="/">↩️ Volver al inicio</a>
-        </div>
-    </body>
-    </html>
-    '''
-@app.route('/checkout_5_postales', methods=['POST'])
-def checkout_5_postales():
-    codigo = request.form.get("codigo")
-    email = request.form.get("email")
-
-    if not codigo or not email:
-        return "Faltan datos para el paquete de postales", 400
-
-    try:
-        session = stripe.checkout.Session.create(
-            customer_email=email,
-            metadata={
-                "codigo": codigo,
-                "paquete": "5_postales"
-            },
-            payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {
-                        "name": f"Paquete de 5 postales ({codigo})"
-                    },
-                    "unit_amount": 500  # 5.00 €
-                },
-                "quantity": 1
-            }],
-            mode="payment",
-            success_url=f"https://postales-online.onrender.com/success_paquete?codigo={codigo}",
-            cancel_url="https://postales-online.onrender.com/cancel"
-        )
-        return redirect(session.url, code=303)
-    except Exception as e:
-        return f"Error creando pago del paquete: {str(e)}", 500
-@app.route('/success_paquete')
-def success_paquete():
-    codigo = request.args.get("codigo", "")
-
-    postales_path = os.path.join(BASE, "static", "postales_generadas")
-    imagenes = []
-    if os.path.exists(postales_path):
-        imagenes = [f"/static/postales_generadas/{f}" for f in os.listdir(postales_path) if f.startswith(codigo)]
-
-    html_imgs = ''.join(f'<img src="{img}" style="max-width:180px;margin:10px;border:2px solid white;border-radius:8px">' for img in imagenes)
-
-    return f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>✅ Paquete de postales enviado</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body {{
-                background-color: #111;
-                color: white;
-                font-family: sans-serif;
-                text-align: center;
-                padding: 40px;
-            }}
-            .card {{
-                background-color: #1e1e1e;
-                border: 2px solid #2ecc71;
-                padding: 30px;
-                border-radius: 12px;
-                max-width: 600px;
-                margin: auto;
-            }}
-            .button {{
-                display: inline-block;
-                margin-top: 20px;
-                background: #2ecc71;
-                color: white;
-                padding: 10px 20px;
-                text-decoration: none;
-                border-radius: 8px;
-                font-weight: bold;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h2>✅ ¡Pago exitoso!</h2>
-            <p>Recibirás el paquete de 5 postales a tu correo pronto.</p>
-            <div>{html_imgs}</div>
             <a class="button" href="/">↩️ Volver al inicio</a>
         </div>
     </body>
