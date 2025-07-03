@@ -584,147 +584,113 @@ def view_image(codigo):
         vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
 
     html = f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Tu postal personalizada</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <style>
-            html, body {{
-                margin: 0;
-                padding: 0;
-                background-color: #111;
-                color: white;
-                font-family: sans-serif;
-                text-align: center;
-                touch-action: manipulation;
-                -webkit-user-select: none;
-                -webkit-touch-callout: none;
-                user-select: none;
-            }}
-            .scroll-container {{
-                display: flex;
-                overflow-x: auto;
-                scroll-snap-type: x mandatory;
-                gap: 12px;
-                padding: 10px;
-            }}
-            .scroll-container::-webkit-scrollbar {{
-                display: none;
-            }}
-            .postal-wrapper {{
-                flex: 0 0 auto;
-                scroll-snap-align: center;
-                background-color: #222;
-                border-radius: 12px;
-                padding: 8px;
-                width: 160px;
-            }}
-            img {{
-                width: 100%;
-                height: auto;
-                border-radius: 8px;
-                pointer-events: none;
-                -webkit-user-drag: none;
-            }}
-            label {{
-                display: block;
-                margin-top: 6px;
-            }}
-            .shopify-button {{
-                background-color: #2ecc71;
-                color: white;
-                padding: 10px 20px;
-                margin: 15px 0;
-                border: none;
-                border-radius: 5px;
-                text-decoration: none;
-                display: inline-block;
-            }}
-            input[type="email"], select, input[type="number"], input[type="text"] {{
-                padding: 10px;
-                font-size: 16px;
-                border-radius: 5px;
-                margin-top: 10px;
-                width: 90%;
-                max-width: 300px;
-                border: none;
-            }}
-            form {{
-                margin-bottom: 40px;
-            }}
-            hr {{
-                margin: 40px 0;
-                border-color: #444;
-            }}
-            @media (min-width: 768px) {{
-                .scroll-container {{
-                    flex-wrap: wrap;
-                    justify-content: center;
-                    overflow: visible;
-                }}
-                .postal-wrapper {{
-                    width: 200px;
-                }}
-            }}
-        </style>
-    </head>
-    <body oncontextmenu="return false">
-        <h2>📸 Tu postal personalizada</h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Tu postal personalizada</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        html, body {{
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+            touch-action: manipulation;
+        }}
+        .scroll-container {{
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            gap: 12px;
+            padding: 10px;
+        }}
+        .postal-wrapper {{
+            flex: 0 0 auto;
+            scroll-snap-align: center;
+            background-color: #222;
+            border-radius: 12px;
+            padding: 8px;
+            width: 180px;
+            transition: transform 0.2s;
+        }}
+        .postal-wrapper:hover {{
+            transform: scale(1.05);
+        }}
+        img {{
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            cursor: pointer;
+        }}
+        label, .price-label {{
+            display: block;
+            margin-top: 6px;
+        }}
+        .shopify-button {{
+            background-color: #2ecc71;
+            color: white;
+            padding: 12px 24px;
+            margin: 15px 0;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }}
+        .email-input {{
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            margin-top: 10px;
+            width: 90%;
+            max-width: 300px;
+            border: none;
+        }}
+        .big-button {{
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-top: 30px;
+            display: inline-block;
+            text-decoration: none;
+        }}
+    </style>
+</head>
+<body oncontextmenu="return false">
+    <h2>📸 Tu postal personalizada</h2>
+    <form action="/checkout" method="POST">
+        <input type="hidden" name="codigo" value="{codigo}">
         <div class="scroll-container">
-            {''.join(f'<div class="postal-wrapper"><img src="/static/postales_generadas/{file}" alt="postal {file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
-        </div>
-
-        <div>
-            <h3>💌 Recibe tu postal seleccionada por email tras el pago</h3>
-            <form action="/checkout" method="POST">
-                <input type="hidden" name="codigo" value="{codigo}">
-                <input type="email" name="email" placeholder="Tu correo electrónico" required><br>
-                <button type="submit" class="shopify-button">💳 Pagar y recibir postal</button>
-            </form>
-        </div>
-
-        <hr>
-
-        <h2>🍷 Selecciona vinos</h2>
-        <form method="POST" action="/formulario_vino">
-            <div class="scroll-container">
-    '''
-
-    for vino in vinos:
-        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
-        html += f'''
-                <div class="postal-wrapper">
-                    <img src="/static/Vinos/{vino}" alt="vino {nombre}">
-                    <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
-                    <select name="cantidad_{vino}">
-                        {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
-                    </select>
+            {''.join(f'''
+                <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
+                    <img src="/static/postales_generadas/{file}" alt="postal {file}">
+                    <span class="price-label">📬 3 €</span>
+                    <label><input type="radio" name="postal" value="{file}" required id="radio_{file}" style="display:none"></label>
                 </div>
-        '''
+            ''' for file in postales_multiples)}
+        </div>
+        <input type="email" name="email" placeholder="Tu correo electrónico" required class="email-input"><br>
+        <button type="submit" class="shopify-button">💳 Pagar y recibir postal</button>
+    </form>
 
-    html += f'''
-            </div>
-            <button class="shopify-button" type="submit">🍷 Pedir vinos</button>
-        </form>
+    <form action="/checkout_5_postales" method="POST">
+        <input type="hidden" name="codigo" value="{codigo}">
+        <input type="email" name="email" placeholder="Tu correo electrónico" required class="email-input"><br>
+        <button type="submit" class="big-button">🖼️ Comprar paquete de 5 postales (5 €)</button>
+    </form>
 
-        <script>
-            const form = document.querySelector("form[action='/checkout']");
-            form.addEventListener("submit", function(e) {{
-                const selected = document.querySelector("input[name='postal']:checked");
-                if (selected) {{
-                    const input = document.createElement("input");
-                    input.type = "hidden";
-                    input.name = "postal";
-                    input.value = selected.value;
-                    form.appendChild(input);
-                }}
-            }});
-        </script>
-    </body>
-    </html>
-    '''
-    return html
+    <script>
+        function seleccionarPostal(fileName) {{
+            const radio = document.getElementById("radio_" + fileName);
+            if (radio) radio.checked = true;
+        }}
+    </script>
+</body>
+</html>
+'''
 @app.route('/admin_pedidos')
 def admin_pedidos():
     token = request.args.get("token")
