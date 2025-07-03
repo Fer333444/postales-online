@@ -575,12 +575,13 @@ def view_image(codigo):
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     vinos_path = os.path.join(BASE, "static", "Vinos")
     camisetas_path = os.path.join(BASE, "static", "Camisetas")
-    postales_multiples = []
+
+    postales = []
     vinos = []
     camisetas = []
 
     if os.path.exists(postales_path):
-        postales_multiples = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
+        postales = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
 
     if os.path.exists(vinos_path):
         vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
@@ -592,94 +593,189 @@ def view_image(codigo):
     <!DOCTYPE html>
     <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+        <meta charset="utf-8">
+        <title>Tu postal personalizada</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body {{ background-color: #111; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 0; }}
-            h2 {{ margin-top: 20px; }}
-            .scroll-container {{ display: flex; overflow-x: auto; gap: 12px; padding: 10px; justify-content: start; }}
-            .scroll-container::-webkit-scrollbar {{ display: none; }}
-            .postal-wrapper {{ background: #222; border-radius: 10px; padding: 10px; width: 160px; flex: 0 0 auto; border: 2px solid transparent; }}
-            .postal-wrapper.selected {{ border: 2px solid #2ecc71; }}
-            .precio-label {{ display: flex; justify-content: center; align-items: center; gap: 6px; color: #2ecc71; margin-top: 5px; }}
-            .button-row {{ display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 10px; }}
-            .shopify-button {{ padding: 10px 16px; font-size: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }}
-            .verde {{ background: #2ecc71; color: white; }}
-            .azul {{ background: #3498db; color: white; }}
-            .section-title {{ font-weight: bold; font-size: 18px; margin-top: 25px; margin-bottom: 12px; }}
-            .producto-img {{ width: 140px; border-radius: 6px; }}
-            @media (min-width: 768px) {{ .scroll-container {{ justify-content: center; flex-wrap: wrap; overflow-x: hidden; }} }}
+            body {{
+                background-color: #111;
+                color: white;
+                font-family: sans-serif;
+                text-align: center;
+                margin: 0;
+                padding: 0;
+            }}
+            h2 {{
+                margin-top: 20px;
+            }}
+            .scroll-container {{
+                display: flex;
+                overflow-x: auto;
+                padding: 10px;
+                gap: 10px;
+                justify-content: center;
+            }}
+            .postal-wrapper {{
+                background-color: #222;
+                border-radius: 10px;
+                padding: 10px;
+                width: 160px;
+                position: relative;
+                border: 2px solid transparent;
+            }}
+            .postal-wrapper.selected {{
+                border: 2px solid #2ecc71;
+            }}
+            .postal-wrapper input[type="checkbox"] {{
+                position: absolute;
+                top: 8px;
+                left: 8px;
+                transform: scale(1.3);
+            }}
+            img {{
+                width: 100%;
+                border-radius: 8px;
+                pointer-events: none;
+            }}
+            .precio-label {{
+                display: block;
+                margin-top: 6px;
+                color: #2ecc71;
+                font-weight: bold;
+            }}
+            .shopify-button {{
+                background-color: #2ecc71;
+                color: white;
+                padding: 10px 20px;
+                margin: 10px;
+                border: none;
+                border-radius: 5px;
+                font-weight: bold;
+                cursor: pointer;
+            }}
+            .blue-button {{
+                background-color: #3498db;
+            }}
+            .blue-button:hover {{
+                background-color: #2980b9;
+            }}
+            .section {{
+                margin-top: 30px;
+                border-top: 1px solid #555;
+                padding-top: 20px;
+            }}
+            .vinos-camisetas {{
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding: 10px;
+                gap: 12px;
+                justify-content: center;
+            }}
+            .item-box {{
+                width: 160px;
+                background: #222;
+                border-radius: 10px;
+                padding: 10px;
+                border: 2px solid transparent;
+            }}
+            .item-box.selected {{
+                border: 2px solid #2ecc71;
+            }}
+            select {{
+                width: 100%;
+                padding: 5px;
+                border-radius: 6px;
+                font-size: 14px;
+                margin-top: 6px;
+            }}
         </style>
     </head>
     <body>
         <h2>📸 Tu postal personalizada</h2>
-        <div class="scroll-container">
+        <form id="form_pago_postales" method="POST" action="/checkout_multiple_postales">
+            <input type="hidden" name="codigo" value="{codigo}">
+            <div class="scroll-container">
     '''
 
-    for file in postales_multiples:
+    for p in postales:
         html += f'''
-            <div class="postal-wrapper" onclick="seleccionarPostal(this, '{file}')">
-                <img src="/static/postales_generadas/{file}" class="producto-img">
-                <label class="precio-label"><input type="checkbox" name="postal" value="{file}" style="accent-color:#2ecc71;"> ✔️ 3 €</label>
-            </div>
-        '''
-
-    html += f'''
-        </div>
-        <div class="button-row">
-            <form method="POST" action="/checkout" style="display:inline;">
-                <input type="hidden" name="codigo" value="{codigo}">
-                <input type="hidden" name="postal" id="postal_seleccionada">
-                <button class="shopify-button verde" type="submit">💳 Pagar esta postal (3 €)</button>
-            </form>
-        </div>
-
-        <div class="section-title">📦 Comprar paquete de 5 postales</div>
-        <div class="button-row">
-            <form method="POST" action="/pagar_paquete">
-                <input type="hidden" name="codigo" value="{codigo}">
-                <button class="shopify-button azul" type="submit">💳 Pagar paquete de 5 postales (5 €)</button>
-            </form>
-            <button class="shopify-button verde" onclick="seleccionarTodas()">✅ Seleccionar las 5 postales</button>
-        </div>
-
-        <div class="section-title">🍷 Selecciona vinos y camisetas</div>
-        <div class="scroll-container">
-    '''
-
-    for vino in vinos:
-        nombre = vino.replace(".jpg", "").replace("_", " ").title()
-        html += f'''
-            <div class="postal-wrapper">
-                <img src="/static/Vinos/{vino}" class="producto-img">
-                <label class="precio-label"><input type="checkbox" name="vino" value="{vino}" style="accent-color:#2ecc71;"> {nombre}</label><br>
-                <select name="cantidad_{vino}">
-                    {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
-                </select>
-            </div>
-        '''
-
-    for camisa in camisetas:
-        nombre = camisa.replace(".jpg", "").replace("_", " ").title()
-        html += f'''
-            <div class="postal-wrapper">
-                <img src="/static/Camisetas/{camisa}" class="producto-img">
-                <label class="precio-label"><input type="checkbox" name="camisa" value="{camisa}" style="accent-color:#2ecc71;"> {nombre}</label><br>
-                <select name="cantidad_{camisa}">
-                    {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 6))}
-                </select>
+            <div class="postal-wrapper" onclick="togglePostalSelection(this)">
+                <input type="checkbox" name="postales" value="{p}">
+                <img src="/static/postales_generadas/{p}" alt="{p}">
+                <span class="precio-label">✔️ 3 €</span>
             </div>
         '''
 
     html += '''
+            </div>
+            <button type="submit" class="shopify-button">💳 Pagar esta postal (3 €)</button>
+        </form>
+
+        <div class="section">
+            <h3>📦 Comprar paquete de 5 postales</h3>
+            <form method="POST" action="/pagar_paquete" style="display:inline-block;">
+                <input type="hidden" name="codigo" value="''' + codigo + '''">
+                <button class="shopify-button blue-button" type="submit">💳 Pagar paquete de 5 postales (5 €)</button>
+            </form>
+            <button onclick="seleccionarCinco()" class="shopify-button">✅ Seleccionar las 5 postales</button>
         </div>
+
+        <div class="section">
+            <h3>🍷 Selecciona vinos y camisetas</h3>
+            <form method="POST" action="/formulario_vino">
+                <div class="vinos-camisetas">
+    '''
+
+    for vino in vinos:
+        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+        html += f'''
+                    <div class="item-box">
+                        <input type="checkbox" name="vino" value="{vino}">
+                        <img src="/static/Vinos/{vino}" alt="{nombre}">
+                        <label>{nombre}</label>
+                        <select name="cantidad_{vino}">
+                            {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
+                        </select>
+                    </div>
+        '''
+
+    for camiseta in camisetas:
+        nombre = camiseta.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+        html += f'''
+                    <div class="item-box">
+                        <input type="checkbox" disabled>
+                        <img src="/static/Camisetas/{camiseta}" alt="{nombre}">
+                        <label>{nombre}</label>
+                    </div>
+        '''
+
+    html += '''
+                </div>
+                <button type="submit" class="shopify-button" style="background-color: white; color: black;">🍷 Pagar vinos</button>
+            </form>
+        </div>
+
         <script>
-            function seleccionarPostal(div, nombre) {
-                document.querySelectorAll(".postal-wrapper").forEach(p => p.classList.remove("selected"));
-                div.classList.add("selected");
-                document.getElementById("postal_seleccionada").value = nombre;
+            function togglePostalSelection(element) {
+                const checkbox = element.querySelector("input[type='checkbox']");
+                checkbox.checked = !checkbox.checked;
+                element.classList.toggle("selected", checkbox.checked);
             }
-            function seleccionarTodas() {
-                document.querySelectorAll('input[name="postal"]').forEach(e => e.checked = true);
+
+            function seleccionarCinco() {
+                const wrappers = document.querySelectorAll(".postal-wrapper");
+                wrappers.forEach((el, index) => {
+                    if (index < 5) {
+                        const checkbox = el.querySelector("input[type='checkbox']");
+                        checkbox.checked = true;
+                        el.classList.add("selected");
+                    } else {
+                        const checkbox = el.querySelector("input[type='checkbox']");
+                        checkbox.checked = false;
+                        el.classList.remove("selected");
+                    }
+                });
             }
         </script>
     </body>
