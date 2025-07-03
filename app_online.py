@@ -749,13 +749,42 @@ def admin_pedidos():
         <meta charset="utf-8">
         <title>Panel de Pedidos</title>
         <style>
-            body { font-family: sans-serif; background-color: #111; color: white; padding: 20px; }
-            h2 { text-align: center; color: gold; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #444; padding: 10px; text-align: left; }
-            th { background-color: #222; color: white; }
-            tr:nth-child(even) { background-color: #222; }
-            .producto { margin-bottom: 5px; }
+            body {
+                font-family: 'Segoe UI', sans-serif;
+                background-color: #0d1117;
+                color: #c9d1d9;
+                padding: 20px;
+            }
+            h2 {
+                text-align: center;
+                color: #f1c40f;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            th, td {
+                border: 1px solid #30363d;
+                padding: 10px;
+                text-align: left;
+            }
+            th {
+                background-color: #161b22;
+                color: #58a6ff;
+            }
+            tr:nth-child(even) {
+                background-color: #161b22;
+            }
+            .producto {
+                background-color: #21262d;
+                padding: 4px 8px;
+                border-radius: 6px;
+                margin: 2px 0;
+                display: inline-block;
+                font-size: 13px;
+                color: #f0f6fc;
+            }
         </style>
     </head>
     <body>
@@ -763,31 +792,51 @@ def admin_pedidos():
         <table>
             <tr>
                 <th>Fecha</th>
+                <th>Hora</th>
+                <th>Nombre</th>
                 <th>Correo</th>
                 <th>Tipo</th>
                 <th>Productos</th>
                 <th>Dirección</th>
                 <th>Teléfono</th>
+                <th>Total (€)</th>
             </tr>
     '''
 
     for pedido in pedidos:
+        fecha = pedido.get("fecha", "")
+        hora = fecha[11:19] if "T" in fecha else ""
+        productos = pedido.get("productos", [])
+        total = 0
+        productos_html = ""
+
+        for p in productos:
+            if isinstance(p, dict):
+                producto = p.get("producto", "")
+                cantidad = p.get("cantidad", 1)
+                precio = 0
+                if producto == "vino_tinto.jpg":
+                    precio = 120
+                elif producto == "vino_rosado.jpg":
+                    precio = 110
+                elif producto == "vino_blanco.jpg":
+                    precio = 100
+                total += (precio * cantidad) / 100
+                productos_html += f'<div class="producto">{producto} x {cantidad}</div>'
+            elif isinstance(p, str):
+                productos_html += f'<div class="producto">{p}</div>'
+
         html += f'''
         <tr>
-            <td>{pedido.get("fecha", "")}</td>
+            <td>{fecha[:10]}</td>
+            <td>{hora}</td>
+            <td>{pedido.get("nombre", "")}</td>
             <td>{pedido.get("correo", "")}</td>
             <td>{pedido.get("tipo", "")}</td>
-            <td>
-        '''
-        for p in pedido.get("productos", []):
-            if isinstance(p, str):
-                html += f'<div class="producto">{p}</div>'
-            elif isinstance(p, dict):
-                html += f'<div class="producto">{p.get("producto", "")} x {p.get("cantidad", 1)}</div>'
-        html += f'''
-            </td>
+            <td>{productos_html}</td>
             <td>{pedido.get("direccion", "")}</td>
             <td>{pedido.get("telefono", "")}</td>
+            <td>💶 {total:.2f}</td>
         </tr>
         '''
 
