@@ -680,6 +680,7 @@ def view_image(codigo):
     '''
 
     for file in postales_multiples:
+        nombre = file.replace(".jpg", "").replace("_", " ").title()
         html += f'''
             <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
                 <img src="/static/postales_generadas/{file}" alt="postal {file}">
@@ -715,7 +716,7 @@ def view_image(codigo):
         <script>
             function seleccionarPostal(nombre) {{
                 document.querySelectorAll('input[name="postal"]').forEach(e => e.checked = false);
-                const input = document.querySelector(`input[value="${nombre}"]`);
+                const input = document.querySelector(`input[value="${{nombre}}"]`);
                 if (input) input.checked = true;
             }}
         </script>
