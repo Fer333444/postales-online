@@ -574,209 +574,126 @@ def view_image(codigo):
 
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     vinos_path = os.path.join(BASE, "static", "Vinos")
-    camisetas_path = os.path.join(BASE, "static", "Camisetas")
-
-    postales = []
+    postales_multiples = []
     vinos = []
-    camisetas = []
 
     if os.path.exists(postales_path):
-        postales = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
+        for file in os.listdir(postales_path):
+            if file.startswith(codigo):
+                postales_multiples.append(file)
 
     if os.path.exists(vinos_path):
         vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
-
-    if os.path.exists(camisetas_path):
-        camisetas = [f for f in os.listdir(camisetas_path) if f.endswith((".jpg", ".png"))]
 
     html = f'''
     <!DOCTYPE html>
     <html>
     <head>
-        <meta charset="utf-8">
         <title>Tu postal personalizada</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-            body {{
+            html, body {{
+                margin: 0;
+                padding: 0;
                 background-color: #111;
                 color: white;
                 font-family: sans-serif;
                 text-align: center;
-                margin: 0;
-                padding: 0;
-            }}
-            h2 {{
-                margin-top: 20px;
             }}
             .scroll-container {{
                 display: flex;
                 overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                gap: 12px;
                 padding: 10px;
-                gap: 10px;
-                justify-content: center;
+            }}
+            .scroll-container::-webkit-scrollbar {{
+                display: none;
             }}
             .postal-wrapper {{
+                flex: 0 0 auto;
+                scroll-snap-align: center;
                 background-color: #222;
-                border-radius: 10px;
-                padding: 10px;
+                border-radius: 12px;
+                padding: 8px;
                 width: 160px;
-                position: relative;
                 border: 2px solid transparent;
             }}
             .postal-wrapper.selected {{
-                border: 2px solid #2ecc71;
-            }}
-            .postal-wrapper input[type="checkbox"] {{
-                position: absolute;
-                top: 8px;
-                left: 8px;
-                transform: scale(1.3);
+                border-color: #2ecc71;
             }}
             img {{
                 width: 100%;
+                height: auto;
                 border-radius: 8px;
-                pointer-events: none;
             }}
-            .precio-label {{
+            label {{
                 display: block;
                 margin-top: 6px;
+            }}
+            .precio-label {{
                 color: #2ecc71;
                 font-weight: bold;
+                font-size: 16px;
             }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 10px;
+                margin: 15px 10px;
                 border: none;
                 border-radius: 5px;
-                font-weight: bold;
-                cursor: pointer;
+                text-decoration: none;
+                display: inline-block;
             }}
-            .blue-button {{
-                background-color: #3498db;
-            }}
-            .blue-button:hover {{
-                background-color: #2980b9;
-            }}
-            .section {{
-                margin-top: 30px;
-                border-top: 1px solid #555;
-                padding-top: 20px;
-            }}
-            .vinos-camisetas {{
-                display: flex;
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                padding: 10px;
-                gap: 12px;
-                justify-content: center;
-            }}
-            .item-box {{
-                width: 160px;
-                background: #222;
-                border-radius: 10px;
-                padding: 10px;
-                border: 2px solid transparent;
-            }}
-            .item-box.selected {{
-                border: 2px solid #2ecc71;
-            }}
-            select {{
-                width: 100%;
-                padding: 5px;
-                border-radius: 6px;
-                font-size: 14px;
-                margin-top: 6px;
+            form {{
+                margin-bottom: 20px;
             }}
         </style>
     </head>
     <body>
         <h2>📸 Tu postal personalizada</h2>
-        <form id="form_pago_postales" method="POST" action="/checkout_multiple_postales">
-            <input type="hidden" name="codigo" value="{codigo}">
-            <div class="scroll-container">
+        <div class="scroll-container">
     '''
 
-    for p in postales:
+    for file in postales_multiples:
         html += f'''
-            <div class="postal-wrapper" onclick="togglePostalSelection(this)">
-                <input type="checkbox" name="postales" value="{p}">
-                <img src="/static/postales_generadas/{p}" alt="{p}">
-                <span class="precio-label">✔️ 3 €</span>
+            <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
+                <img src="/static/postales_generadas/{file}" alt="postal {file}">
+                <label>
+                    <input type="checkbox" name="postal" value="{file}" style="margin-right: 5px;">
+                    <span class="precio-label">✔️ 3 €</span>
+                </label>
             </div>
         '''
 
-    html += '''
-            </div>
-            <button type="submit" class="shopify-button">💳 Pagar esta postal (3 €)</button>
+    html += f'''
+        </div>
+
+        <form method="POST" action="/checkout" id="form_individual">
+            <input type="hidden" name="codigo" value="{codigo}">
+            <button type="submit" class="shopify-button">💳 Pagar esta postal (3 €)</button>
         </form>
 
-        <div class="section">
-            <h3>📦 Comprar paquete de 5 postales</h3>
-            <form method="POST" action="/pagar_paquete" style="display:inline-block;">
-                <input type="hidden" name="codigo" value="''' + codigo + '''">
-                <button class="shopify-button blue-button" type="submit">💳 Pagar paquete de 5 postales (5 €)</button>
-            </form>
-            <button onclick="seleccionarCinco()" class="shopify-button">✅ Seleccionar las 5 postales</button>
-        </div>
-
-        <div class="section">
-            <h3>🍷 Selecciona vinos y camisetas</h3>
-            <form method="POST" action="/formulario_vino">
-                <div class="vinos-camisetas">
-    '''
-
-    for vino in vinos:
-        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
-        html += f'''
-                    <div class="item-box">
-                        <input type="checkbox" name="vino" value="{vino}">
-                        <img src="/static/Vinos/{vino}" alt="{nombre}">
-                        <label>{nombre}</label>
-                        <select name="cantidad_{vino}">
-                            {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
-                        </select>
-                    </div>
-        '''
-
-    for camiseta in camisetas:
-        nombre = camiseta.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
-        html += f'''
-                    <div class="item-box">
-                        <input type="checkbox" disabled>
-                        <img src="/static/Camisetas/{camiseta}" alt="{nombre}">
-                        <label>{nombre}</label>
-                    </div>
-        '''
-
-    html += '''
-                </div>
-                <button type="submit" class="shopify-button" style="background-color: white; color: black;">🍷 Pagar vinos</button>
-            </form>
-        </div>
-
         <script>
-            function togglePostalSelection(element) {
-                const checkbox = element.querySelector("input[type='checkbox']");
-                checkbox.checked = !checkbox.checked;
-                element.classList.toggle("selected", checkbox.checked);
-            }
+        function seleccionarPostal(nombre) {{
+            const checkbox = document.querySelector(`input[value='${{nombre}}']`);
+            if (checkbox) checkbox.checked = !checkbox.checked;
+        }}
 
-            function seleccionarCinco() {
-                const wrappers = document.querySelectorAll(".postal-wrapper");
-                wrappers.forEach((el, index) => {
-                    if (index < 5) {
-                        const checkbox = el.querySelector("input[type='checkbox']");
-                        checkbox.checked = true;
-                        el.classList.add("selected");
-                    } else {
-                        const checkbox = el.querySelector("input[type='checkbox']");
-                        checkbox.checked = false;
-                        el.classList.remove("selected");
-                    }
-                });
-            }
+        document.querySelector("#form_individual").addEventListener("submit", function(e) {{
+            const seleccionadas = [...document.querySelectorAll("input[name='postal']:checked")];
+            if (seleccionadas.length !== 1) {{
+                e.preventDefault();
+                alert("Por favor selecciona solo UNA postal para pagar individualmente.");
+            }} else {{
+                const inputPostal = document.createElement("input");
+                inputPostal.type = "hidden";
+                inputPostal.name = "postal";
+                inputPostal.value = seleccionadas[0].value;
+                this.appendChild(inputPostal);
+            }}
+        }});
         </script>
     </body>
     </html>
