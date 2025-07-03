@@ -574,121 +574,135 @@ def view_image(codigo):
 
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     vinos_path = os.path.join(BASE, "static", "Vinos")
-    camisetas_path = os.path.join(BASE, "static", "Camisetas")
+    camisetas_path = os.path.join(BASE, "static", "camisetas")
     postales_multiples = []
-    vinos = []
-    camisetas = []
+    vinos_y_camisetas = []
 
     if os.path.exists(postales_path):
-        postales_multiples = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
+        for file in os.listdir(postales_path):
+            if file.startswith(codigo):
+                postales_multiples.append(file)
 
     if os.path.exists(vinos_path):
-        vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
+        vinos_y_camisetas += [f"Vinos/{f}" for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
 
     if os.path.exists(camisetas_path):
-        camisetas = [f for f in os.listdir(camisetas_path) if f.endswith((".jpg", ".png"))]
+        vinos_y_camisetas += [f"camisetas/{f}" for f in os.listdir(camisetas_path) if f.endswith((".jpg", ".png"))]
 
     html = f'''
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Tu postal personalizada</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
-            html, body {{ margin: 0; padding: 0; background-color: #111; color: white; font-family: sans-serif; text-align: center; }}
-            .scroll-container {{ display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 10px; }}
-            .postal-wrapper {{ flex: 0 0 auto; scroll-snap-align: center; background-color: #222; border-radius: 12px; padding: 8px; width: 160px; position: relative; border: 2px solid transparent; }}
-            .postal-wrapper.selected {{ border: 2px solid #2ecc71; }}
-            img {{ width: 100%; height: auto; border-radius: 8px; }}
-            .precio-label {{ color: #2ecc71; font-weight: bold; font-size: 14px; display: inline-block; margin-left: 6px; }}
-            input[type='checkbox'] {{ transform: scale(1.3); }}
-            .shopify-button {{ background-color: #2ecc71; color: white; padding: 10px 20px; margin: 12px 4px; border: none; border-radius: 5px; }}
-            .paquete-boton {{ background-color: #3498db; }}
-            .paquete-boton:hover {{ background-color: #2980b9; }}
-            hr {{ border-color: #444; margin: 20px 0; }}
-            h3 {{ margin-top: 20px; }}
+            body {{ background-color: #111; color: white; font-family: sans-serif; margin: 0; padding: 20px; }}
+            h2 {{ text-align: center; }}
+            .scroll-container {{ display: flex; overflow-x: auto; gap: 10px; padding: 10px; justify-content: center; }}
+            .postal-wrapper {{ border: 3px solid transparent; border-radius: 10px; padding: 5px; background: #222; position: relative; }}
+            .postal-wrapper.seleccionada {{ border-color: #2ecc71; }}
+            .postal-wrapper input[type="checkbox"] {{ position: absolute; top: 5px; left: 5px; }}
+            img {{ max-width: 140px; border-radius: 8px; }}
+            .precio-label {{ display: block; margin-top: 5px; font-weight: bold; color: #2ecc71; text-align: center; }}
+            .button-group {{ text-align: center; margin: 20px 0; }}
+            .shopify-button {{ padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }}
+            .verde {{ background-color: #2ecc71; color: white; }}
+            .azul {{ background-color: #3498db; color: white; }}
+            .scroll-vinos {{ display: flex; overflow-x: auto; gap: 14px; padding: 10px; justify-content: center; }}
+            .vproducto-wrapper {{ border: 2px solid transparent; border-radius: 10px; padding: 6px; background: #222; position: relative; text-align: center; }}
+            .vproducto-wrapper.seleccionada {{ border-color: #2ecc71; }}
+            label {{ font-size: 14px; }}
+            select {{ margin-top: 5px; }}
+            @media (max-width: 768px) {{
+                img {{ max-width: 100px; }}
+                .shopify-button {{ font-size: 14px; padding: 8px 16px; }}
+            }}
         </style>
     </head>
     <body>
         <h2>📸 Tu postal personalizada</h2>
-        <div class="scroll-container" id="postales">
+        <div class="scroll-container">
     '''
 
     for file in postales_multiples:
         html += f'''
-            <div class="postal-wrapper" onclick="togglePostal('{file}', this)">
-                <img src="/static/postales_generadas/{file}" alt="postal {file}">
-                <label><input type="checkbox" name="postal" value="{file}"><span class="precio-label">✔️ 3 €</span></label>
-            </div>
+        <div class="postal-wrapper" onclick="toggleSeleccion(this)">
+            <input type="checkbox" name="postal" value="{file}">
+            <img src="/static/postales_generadas/{file}" alt="{file}">
+            <span class="precio-label">✔️ 3 €</span>
+        </div>
         '''
 
     html += f'''
         </div>
-        <div>
-            <form action="/checkout" method="POST" id="form_individual">
-                <input type="hidden" name="codigo" value="{codigo}">
-                <input type="hidden" name="postal" id="postal_individual">
-                <input type="email" name="email" placeholder="Tu correo electrónico" required>
-                <button type="submit" class="shopify-button">💳 Pagar esta postal (3 €)</button>
-            </form>
+        <div class="button-group">
+            <button class="shopify-button verde" onclick="pagarSeleccionada()">💳 Pagar esta postal (3 €)</button>
         </div>
         <hr>
-        <div>
-            <h3>📦 Comprar paquete de 5 postales</h3>
-            <form method="POST" action="/pagar_paquete">
+        <h3>📦 Comprar paquete de 5 postales</h3>
+        <div class="button-group">
+            <form method="POST" action="/pagar_paquete" style="display:inline">
                 <input type="hidden" name="codigo" value="{codigo}">
-                <button class="shopify-button paquete-boton" type="submit">💳 Pagar paquete de 5 postales (5 €)</button>
-                <button class="shopify-button" type="button" onclick="seleccionarTodas()">✅ Seleccionar las 5 postales</button>
+                <button type="submit" class="shopify-button azul">💳 Pagar paquete de 5 postales (5 €)</button>
             </form>
+            <button class="shopify-button verde" onclick="seleccionarTodasPostales()">✅ Seleccionar las 5 postales</button>
         </div>
         <hr>
-        <h3>🍷👕 Selecciona vinos y camisetas</h3>
-        <div class="scroll-container">
+        <h3>🍷 Selecciona vinos y camisetas</h3>
+        <form method="POST" action="/formulario_vino">
+            <div class="scroll-vinos">
     '''
 
-    for vino in vinos:
-        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+    for archivo in vinos_y_camisetas:
+        nombre = os.path.basename(archivo).replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
-            <div class="postal-wrapper">
-                <img src="/static/Vinos/{vino}" alt="vino {nombre}">
-                <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label>
-                <select name="cantidad_{vino}">{''.join(f'<option value="{i}">{i}</option>' for i in range(0, 6))}</select>
-            </div>
-        '''
-
-    for c in camisetas:
-        nombre = c.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
-        html += f'''
-            <div class="postal-wrapper">
-                <img src="/static/Camisetas/{c}" alt="camiseta {nombre}">
-                <label>{nombre}</label>
-                <select name="talla_{c}">
-                    <option value="">Talla</option>
-                    <option value="S">S</option>
-                    <option value="M">M</option>
-                    <option value="L">L</option>
-                    <option value="XL">XL</option>
+            <div class="vproducto-wrapper">
+                <input type="checkbox" name="vino" value="{archivo}"><br>
+                <img src="/static/{archivo}" alt="{nombre}" style="max-width:80px"><br>
+                <label>{nombre}</label><br>
+                <select name="cantidad_{archivo}">
+                    {''.join([f'<option value="{i}">{i}</option>' for i in range(6)])}
                 </select>
-                <select name="cantidad_{c}">{''.join(f'<option value="{i}">{i}</option>' for i in range(0, 6))}</select>
             </div>
         '''
 
-    html += '''
-        </div>
+    html += f'''
+            </div>
+            <div class="button-group">
+                <button type="submit" class="shopify-button rojo">🍷 Pagar vinos</button>
+            </div>
+        </form>
+
         <script>
-            function togglePostal(file, element) {
-                const checkbox = element.querySelector('input[type="checkbox"]');
+            function toggleSeleccion(div) {{
+                const checkbox = div.querySelector('input[type="checkbox"]');
                 checkbox.checked = !checkbox.checked;
-                element.classList.toggle('selected');
-                document.getElementById("postal_individual").value = file;
-            }
-            function seleccionarTodas() {
-                document.querySelectorAll('.postal-wrapper').forEach(el => {
-                    const checkbox = el.querySelector('input[type="checkbox"]');
-                    checkbox.checked = true;
-                    el.classList.add('selected');
-                });
-            }
+                div.classList.toggle("seleccionada", checkbox.checked);
+            }}
+            function seleccionarTodasPostales() {{
+                document.querySelectorAll(".postal-wrapper input[type='checkbox']").forEach(cb => {{
+                    cb.checked = true;
+                    cb.closest(".postal-wrapper").classList.add("seleccionada");
+                }});
+            }}
+            function pagarSeleccionada() {{
+                const seleccionada = document.querySelector(".postal-wrapper input[type='checkbox']:checked");
+                if (!seleccionada) return alert("Selecciona una postal");
+                const form = document.createElement("form");
+                form.method = "POST";
+                form.action = "/checkout";
+                const codigoInput = document.createElement("input");
+                codigoInput.name = "codigo";
+                codigoInput.value = "{codigo}";
+                form.appendChild(codigoInput);
+                const postalInput = document.createElement("input");
+                postalInput.name = "postal";
+                postalInput.value = seleccionada.value;
+                form.appendChild(postalInput);
+                document.body.appendChild(form);
+                form.submit();
+            }}
         </script>
     </body>
     </html>
