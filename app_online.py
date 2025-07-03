@@ -728,7 +728,7 @@ def view_image(codigo):
 @app.route('/admin_pedidos')
 def admin_pedidos():
     token = request.args.get("token")
-    if token != "secreto123":
+    if token != os.getenv("ADMIN_TOKEN", "secreto123"):
         return "Acceso denegado", 403
 
     PEDIDOS_FILE = os.path.join(BASE, "pedidos.json")
@@ -748,42 +748,65 @@ def admin_pedidos():
     <head>
         <meta charset="utf-8">
         <title>Panel de Pedidos</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             body {
                 font-family: 'Segoe UI', sans-serif;
-                background-color: #0d1117;
-                color: #c9d1d9;
+                background-color: #111;
+                color: white;
                 padding: 20px;
             }
             h2 {
                 text-align: center;
-                color: #f1c40f;
+                color: gold;
+                margin-bottom: 30px;
             }
             table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 20px;
+                font-size: 14px;
             }
             th, td {
-                border: 1px solid #30363d;
+                border: 1px solid #444;
                 padding: 10px;
                 text-align: left;
             }
             th {
-                background-color: #161b22;
-                color: #58a6ff;
+                background-color: #222;
+                color: #ffcc00;
             }
             tr:nth-child(even) {
-                background-color: #161b22;
+                background-color: #1a1a1a;
             }
             .producto {
-                background-color: #21262d;
+                background-color: #2c2c2c;
+                margin: 3px 0;
                 padding: 4px 8px;
-                border-radius: 6px;
-                margin: 2px 0;
+                border-radius: 4px;
                 display: inline-block;
+                color: #fff;
+            }
+            .estado {
+                background-color: #333;
+                padding: 6px 10px;
+                border-radius: 5px;
                 font-size: 13px;
-                color: #f0f6fc;
+                display: inline-block;
+            }
+            select {
+                background-color: #000;
+                color: white;
+                border: 1px solid #666;
+                padding: 5px;
+                border-radius: 4px;
+            }
+            @media (max-width: 768px) {
+                table, th, td {
+                    font-size: 12px;
+                }
+                th, td {
+                    padding: 8px 6px;
+                }
             }
         </style>
     </head>
@@ -800,43 +823,52 @@ def admin_pedidos():
                 <th>Dirección</th>
                 <th>Teléfono</th>
                 <th>Total (€)</th>
+                <th>Estado</th>
             </tr>
     '''
 
     for pedido in pedidos:
-        fecha = pedido.get("fecha", "")
-        hora = fecha[11:19] if "T" in fecha else ""
+        fecha_hora = pedido.get("fecha", "")
+        fecha, hora = fecha_hora.split("T")[0], fecha_hora.split("T")[1][:8]
         productos = pedido.get("productos", [])
         total = 0
-        productos_html = ""
-
         for p in productos:
             if isinstance(p, dict):
-                producto = p.get("producto", "")
-                cantidad = p.get("cantidad", 1)
-                precio = 0
-                if producto == "vino_tinto.jpg":
-                    precio = 120
-                elif producto == "vino_rosado.jpg":
-                    precio = 110
-                elif producto == "vino_blanco.jpg":
-                    precio = 100
-                total += (precio * cantidad) / 100
-                productos_html += f'<div class="producto">{producto} x {cantidad}</div>'
-            elif isinstance(p, str):
-                productos_html += f'<div class="producto">{p}</div>'
+                nombre = p.get("producto", "")
+                cantidad = int(p.get("cantidad", 1))
+                if "tinto" in nombre:
+                    precio = 1.20
+                elif "rosado" in nombre:
+                    precio = 1.10
+                elif "blanco" in nombre:
+                    precio = 1.00
+                else:
+                    precio = 1.00
+                total += precio * cantidad
 
         html += f'''
         <tr>
-            <td>{fecha[:10]}</td>
+            <td>{fecha}</td>
             <td>{hora}</td>
             <td>{pedido.get("nombre", "")}</td>
             <td>{pedido.get("correo", "")}</td>
             <td>{pedido.get("tipo", "")}</td>
-            <td>{productos_html}</td>
+            <td>
+        '''
+        for p in productos:
+            if isinstance(p, dict):
+                html += f'<div class="producto">{p.get("producto", "")} x {p.get("cantidad", 1)}</div>'
+        html += f'''
+            </td>
             <td>{pedido.get("direccion", "")}</td>
             <td>{pedido.get("telefono", "")}</td>
-            <td>💶 {total:.2f}</td>
+            <td>€ {total:.2f}</td>
+            <td>
+                <select class="estado">
+                    <option>🕓 En proceso</option>
+                    <option>✅ Enviado</option>
+                </select>
+            </td>
         </tr>
         '''
 
