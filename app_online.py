@@ -664,54 +664,46 @@ def view_image(codigo):
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {{ background: #111; color: white; font-family: sans-serif; text-align: center; }}
-            .scroll-container {{
-                display: flex; overflow-x: auto; gap: 12px; padding: 10px;
-                justify-content: center; flex-wrap: wrap;
-            }}
-            .postal-wrapper {{
-                background: #222; border-radius: 10px; padding: 8px;
-                width: 200px; border: 2px solid transparent;
-            }}
+            .scroll-container {{ display: flex; overflow-x: auto; gap: 12px; padding: 10px; }}
+            .postal-wrapper {{ background: #222; border-radius: 10px; padding: 8px; width: 180px; }}
             img {{ width: 100%; border-radius: 10px; }}
-            label, select, input[type=checkbox] {{
-                margin-top: 5px; display: block; color: white;
-            }}
-            .shopify-button {{
-                background: #2ecc71; color: white; padding: 10px 20px;
-                border: none; border-radius: 5px; margin: 10px 5px; font-size: 16px;
-            }}
+            label, select, input[type=checkbox] {{ margin-top: 5px; display: block; color: white; }}
+            .button {{ background: #2ecc71; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-top: 10px; font-size: 16px; }}
         </style>
     </head>
     <body>
         <h2>📸 Elige tus postales favoritas</h2>
-
-        <form method="POST" action="/pagar_paquete_cinco" onsubmit="return pagar5Postales();">
+        <form method="POST" action="/pagar_postales_seleccionadas">
             <input type="hidden" name="codigo" value="{codigo}">
-            <input type="hidden" name="postales_json" id="postales_json_5">
-            <button class="shopify-button">💳 Pagar 5 postales por 5 €</button>
-        </form>
-
-        <form method="POST" action="/pagar_productos_seleccionados" id="form_productos">
-            <input type="hidden" name="codigo" value="{codigo}">
-            <input type="hidden" name="productos_json" id="productos_json">
-
             <div class="scroll-container">
     '''
 
     for file in postales_multiples:
         html += f'''
-            <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
+            <div class="postal-wrapper">
                 <img src="/static/postales_generadas/{file}">
-                <label>
-                    <input type="checkbox" name="postal" value="{file}">
-                    <span>✔️ 3 €</span>
-                </label>
+                <label><input type="checkbox" name="postal" value="{file}">✔️ 3 €</label>
             </div>
         '''
 
-    html += '''</div>
-        <h3>🍷 Vinos disponibles</h3>
-        <div class="scroll-container">
+    html += f'''
+            </div>
+            <button class="button" type="submit">💳 Pagar postales seleccionadas</button>
+        </form>
+        <form method="POST" action="/pagar_paquete_cinco" onsubmit="return seleccionarYEnviar5()">
+            <input type="hidden" name="codigo" value="{codigo}">
+            <input type="hidden" id="postales_json_5" name="postales_json">
+            <button class="button">💳 Pagar 5 postales por 5 €</button>
+        </form>
+
+        <br><br>
+        <button class="button" onclick="document.getElementById('popup').style.display='block'">🛍️ Comprar vinos y camisetas</button>
+
+        <div id="popup" style="display:none; position:fixed; top:5%; left:10%; right:10%; background:#222; border-radius:12px; padding:20px; z-index:999; box-shadow:0 0 12px #000;">
+            <form method="POST" action="/pagar_productos_seleccionados">
+                <input type="hidden" name="codigo" value="{codigo}">
+                <h3>🍷 Vinos disponibles</h3>
+                <div class="scroll-container">
     '''
 
     for vino in vinos:
@@ -720,17 +712,15 @@ def view_image(codigo):
             <div class="postal-wrapper">
                 <img src="/static/Vinos/{vino}">
                 <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label>
-                <label>Cantidad:
-                    <select name="cantidad_{vino}">
-                        {''.join(f'<option value="{i}">{i}</option>' for i in range(11))}
-                    </select>
-                </label>
+                <select name="cantidad_{vino}">
+                    {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
+                </select>
             </div>
         '''
 
     html += '''</div>
-        <h3>👕 Camisetas personalizadas</h3>
-        <div class="scroll-container">
+            <h3>👕 Camisetas disponibles</h3>
+            <div class="scroll-container">
     '''
 
     for c in camisetas:
@@ -741,38 +731,43 @@ def view_image(codigo):
                 <label><input type="checkbox" name="camiseta" value="{c}"> {nombre}</label>
                 <label>Talla:
                     <select name="talla_{c}">
-                        <option value="S">S</option><option value="M">M</option>
-                        <option value="L">L</option><option value="XL">XL</option>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
                     </select>
                 </label>
                 <label>Cantidad:
                     <select name="cantidad_{c}">
-                        {''.join(f'<option value="{i}">{i}</option>' for i in range(11))}
+                        {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
                     </select>
                 </label>
             </div>
         '''
 
     html += '''</div>
-            <br>
-            <input type="text" name="nombre" placeholder="Tu nombre" required>
-            <input type="email" name="email" placeholder="Tu correo" required>
-            <input type="text" name="direccion" placeholder="Dirección" required>
-            <input type="text" name="telefono" placeholder="Teléfono" required>
-            <button class="shopify-button" type="submit">💳 Pagar productos seleccionados</button>
-        </form>
+                <br>
+                <input type="text" name="nombre" placeholder="Tu nombre" required>
+                <input type="email" name="email" placeholder="Tu correo" required>
+                <input type="text" name="direccion" placeholder="Dirección" required>
+                <input type="text" name="telefono" placeholder="Teléfono" required>
+                <br><br>
+                <button class="button" type="submit">💳 Pagar productos seleccionados</button>
+                <br><br>
+                <button class="button" type="button" onclick="document.getElementById('popup').style.display='none'">❌ Cerrar</button>
+            </form>
+        </div>
 
         <script>
-            function seleccionarPostal(nombre) {
-                const checkbox = document.querySelector(`input[value='${nombre}']`);
-                if (checkbox) {{
-                    checkbox.checked = !checkbox.checked;
-                    checkbox.parentElement.parentElement.classList.toggle("selected");
-                }}
-            }
-
-            function pagar5Postales() {
-                const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
+            function seleccionarYEnviar5() {
+                const checkboxes = document.querySelectorAll("input[name='postal']");
+                const seleccionadas = [];
+                checkboxes.forEach(cb => {
+                    if (seleccionadas.length < 5) {
+                        cb.checked = true;
+                        seleccionadas.push(cb.value);
+                    }
+                });
                 if (seleccionadas.length !== 5) {
                     alert("Debes seleccionar exactamente 5 postales para esta oferta.");
                     return false;
@@ -780,37 +775,6 @@ def view_image(codigo):
                 document.getElementById("postales_json_5").value = JSON.stringify(seleccionadas);
                 return true;
             }
-
-            document.getElementById("form_productos").addEventListener("submit", function(e) {
-                const postales = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
-                const vinos = Array.from(document.querySelectorAll("input[name='vino']:checked")).map(x => {
-                    return {
-                        producto: x.value,
-                        cantidad: parseInt(document.querySelector(`select[name='cantidad_${x.value}']`).value || 0)
-                    }
-                }).filter(v => v.cantidad > 0);
-
-                const camisetas = Array.from(document.querySelectorAll("input[name='camiseta']:checked")).map(x => {
-                    return {
-                        producto: x.value,
-                        talla: document.querySelector(`select[name='talla_${x.value}']`).value,
-                        cantidad: parseInt(document.querySelector(`select[name='cantidad_${x.value}']`).value || 0)
-                    }
-                }).filter(c => c.cantidad > 0);
-
-                const todos = [];
-                postales.forEach(p => todos.push({ producto: p, cantidad: 1 }));
-                vinos.forEach(v => todos.push(v));
-                camisetas.forEach(c => todos.push(c));
-
-                if (todos.length === 0) {
-                    e.preventDefault();
-                    alert("Selecciona al menos un producto para pagar.");
-                    return;
-                }
-
-                document.getElementById("productos_json").value = JSON.stringify(todos);
-            });
         </script>
     </body>
     </html>
