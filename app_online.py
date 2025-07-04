@@ -619,13 +619,14 @@ def view_image(codigo):
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     vinos_path = os.path.join(BASE, "static", "Vinos")
     camisetas_path = os.path.join(BASE, "static", "camisetas")
-
     postales_multiples = []
     vinos = []
     camisetas = []
 
     if os.path.exists(postales_path):
-        postales_multiples = [f for f in os.listdir(postales_path) if f.startswith(codigo)]
+        for file in os.listdir(postales_path):
+            if file.startswith(codigo):
+                postales_multiples.append(file)
 
     if os.path.exists(vinos_path):
         vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
@@ -637,74 +638,62 @@ def view_image(codigo):
     <!DOCTYPE html>
     <html>
     <head>
-        <meta charset="UTF-8">
         <title>Tu postal personalizada</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body {{
+            html, body {{
+                margin: 0;
+                padding: 0;
                 background-color: #111;
                 color: white;
-                font-family: Arial, sans-serif;
+                font-family: sans-serif;
                 text-align: center;
-                margin: 0;
-                padding: 20px;
-            }}
-            h2 {{
-                color: #ffcc00;
-                margin-bottom: 10px;
             }}
             .scroll-container {{
                 display: flex;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                gap: 12px;
+                padding: 10px;
                 justify-content: center;
-                flex-wrap: wrap;
-                gap: 16px;
-                margin: 20px 0;
+            }}
+            .scroll-container::-webkit-scrollbar {{
+                display: none;
             }}
             .postal-wrapper {{
+                flex: 0 0 auto;
+                scroll-snap-align: center;
                 background-color: #222;
                 border-radius: 12px;
-                padding: 12px;
-                width: 200px;
+                padding: 8px;
+                width: 180px;
                 border: 2px solid transparent;
             }}
             .postal-wrapper.selected {{
                 border-color: #2ecc71;
-                box-shadow: 0 0 12px #2ecc71;
+                box-shadow: 0 0 10px #2ecc71;
             }}
             img {{
                 width: 100%;
-                height: auto;
                 border-radius: 8px;
-            }}
-            label {{
-                display: block;
-                margin-top: 6px;
+                pointer-events: none;
             }}
             .precio-label {{
                 color: #2ecc71;
                 font-weight: bold;
-                font-size: 16px;
             }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 15px 10px;
+                margin: 15px 5px;
                 border: none;
                 border-radius: 5px;
-                font-size: 16px;
-                cursor: pointer;
+                text-decoration: none;
             }}
-            .shopify-button:hover {{
-                background-color: #28b765;
-            }}
-            select, input[type="number"] {{
-                margin-top: 5px;
-                padding: 5px;
-                font-size: 14px;
-                width: 100%;
-                border-radius: 6px;
-                border: none;
+            hr {{
+                border: 1px solid #333;
+                margin: 40px 0;
             }}
         </style>
     </head>
@@ -716,10 +705,13 @@ def view_image(codigo):
 
     for file in postales_multiples:
         html += f'''
-        <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
-            <img src="/static/postales_generadas/{file}" alt="{file}">
-            <label><input type="checkbox" name="postal" value="{file}"> ✔️ 3 €</label>
-        </div>
+            <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
+                <img src="/static/postales_generadas/{file}" alt="postal {file}">
+                <label>
+                    <input type="checkbox" name="postal" value="{file}" style="margin-right: 5px;">
+                    <span class="precio-label">✔️ 3 €</span>
+                </label>
+            </div>
         '''
 
     html += f'''
@@ -734,29 +726,30 @@ def view_image(codigo):
             <input type="hidden" name="postales_json" id="postales_json_5">
             <button class="shopify-button">💳 Pagar 5 postales por 5 €</button>
         </form>
-
-        <hr><h2>🍷 Vinos disponibles</h2>
+        <hr>
+        <h2>🍇 Vinos disponibles</h2>
         <form method="POST" action="/formulario_vino">
             <div class="scroll-container">
     '''
+
     for vino in vinos:
         nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
-        <div class="postal-wrapper">
-            <img src="/static/Vinos/{vino}" alt="{nombre}">
-            <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label>
-            <select name="cantidad_{vino}">
-                {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
-            </select>
-        </div>
+            <div class="postal-wrapper">
+                <img src="/static/Vinos/{vino}" alt="{nombre}">
+                <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
+                <select name="cantidad_{vino}">
+                    {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
+                </select>
+            </div>
         '''
 
     html += '''
             </div>
-            <button class="shopify-button" type="submit">🍷 Pedir vinos</button>
+            <button class="shopify-button" type="submit">🍇 Pedir vinos</button>
         </form>
-
-        <hr><h2>👕 Camisetas personalizadas</h2>
+        <hr>
+        <h2>🍾 Camisetas personalizadas</h2>
         <form method="POST" action="/pagar_camisetas">
             <div class="scroll-container">
     '''
@@ -764,30 +757,27 @@ def view_image(codigo):
     for c in camisetas:
         nombre = c.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
-        <div class="postal-wrapper">
-            <img src="/static/camisetas/{c}" alt="{nombre}">
-            <label><input type="checkbox" name="camiseta" value="{c}"> {nombre}</label>
-            <label>Talla:
+            <div class="postal-wrapper">
+                <img src="/static/camisetas/{c}" alt="{nombre}">
+                <label><input type="checkbox" name="camiseta" value="{c}"> {nombre}</label><br>
+                Talla:
                 <select name="talla_{c}">
                     <option value="S">S</option>
                     <option value="M">M</option>
                     <option value="L">L</option>
                     <option value="XL">XL</option>
                 </select>
-            </label>
-            <label>Cantidad:
+                Cantidad:
                 <select name="cantidad_{c}">
                     {''.join(f'<option value="{i}">{i}</option>' for i in range(1, 11))}
                 </select>
-            </label>
-        </div>
+            </div>
         '''
 
     html += '''
             </div>
-            <button class="shopify-button" type="submit">🛒 Comprar camisetas</button>
+            <button class="shopify-button" type="submit">🍾 Comprar camisetas</button>
         </form>
-
         <script>
             function seleccionarPostal(nombre) {
                 const checkbox = document.querySelector(`input[value='${nombre}']`);
@@ -813,7 +803,7 @@ def view_image(codigo):
                 const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
                 if (seleccionadas.length === 0) {
                     e.preventDefault();
-                    alert("Selecciona al menos una postal.");
+                    alert("Selecciona al menos una postal para pagar.");
                     return;
                 }
                 document.getElementById("postales_json").value = JSON.stringify(seleccionadas);
@@ -822,7 +812,7 @@ def view_image(codigo):
             function enviar5postales() {
                 const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
                 if (seleccionadas.length !== 5) {
-                    alert("Debes seleccionar exactamente 5 postales.");
+                    alert("Debes seleccionar exactamente 5 postales para esta oferta.");
                     return false;
                 }
                 document.getElementById("postales_json_5").value = JSON.stringify(seleccionadas);
@@ -1188,7 +1178,7 @@ def pagar_camisetas():
                 "product_data": {
                     "name": f"{nombre_limpio} - Talla {p['talla']}"
                 },
-                "unit_amount": 1500  # 15.00 €
+                "unit_amount": 150  # 15.00 €
             },
             "quantity": p['cantidad']
         })
