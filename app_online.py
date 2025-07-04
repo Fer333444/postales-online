@@ -1030,12 +1030,15 @@ def pagar_postales_seleccionadas():
             "quantity": 1
         })
 
+    import urllib.parse
+    postales_json_encoded = urllib.parse.quote(json.dumps(postales))
+
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=line_items,
             mode="payment",
-            success_url = f"https://postales-online.onrender.com/success?postales_json={json.dumps(postales)}"
+            success_url=f"https://postales-online.onrender.com/success?postales_json={postales_json_encoded}",
             cancel_url="https://postales-online.onrender.com/cancel",
             metadata={
                 "codigo": codigo,
