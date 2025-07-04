@@ -638,10 +638,11 @@ def view_image(codigo):
     <html>
     <head>
         <title>Tu postal personalizada</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <style>
             html, body {{
-                margin: 0; padding: 0;
+                margin: 0;
+                padding: 0;
                 background-color: #111;
                 color: white;
                 font-family: sans-serif;
@@ -654,7 +655,6 @@ def view_image(codigo):
                 gap: 12px;
                 padding: 10px;
             }}
-            .scroll-container::-webkit-scrollbar {{ display: none; }}
             .postal-wrapper {{
                 flex: 0 0 auto;
                 scroll-snap-align: center;
@@ -668,29 +668,26 @@ def view_image(codigo):
                 border-color: #2ecc71;
                 box-shadow: 0 0 10px #2ecc71;
             }}
+            .scroll-container::-webkit-scrollbar {{
+                display: none;
+            }}
             img {{
                 width: 100%;
                 border-radius: 8px;
                 pointer-events: none;
             }}
-            label {{
-                display: block;
-                margin-top: 6px;
-            }}
             .precio-label {{
                 color: #2ecc71;
                 font-weight: bold;
-                font-size: 16px;
             }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 10px 5px;
+                margin: 15px 5px;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
-                font-weight: bold;
             }}
             hr {{
                 border: 1px solid #333;
@@ -701,29 +698,33 @@ def view_image(codigo):
     <body>
         <h2>📸 Elige tus postales favoritas</h2>
         <button class="shopify-button" onclick="seleccionarCinco()">✅ Seleccionar 5 postales</button>
-        <form method="POST" action="/pagar_postales_seleccionadas" id="form_postales_multiples">
-            <input type="hidden" name="codigo" value="{codigo}">
-            <input type="hidden" name="postales_json" id="postales_json">
-            <div class="scroll-container">
+        <div class="scroll-container">
     '''
 
     for file in postales_multiples:
         html += f'''
             <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
-                <img src="/static/postales_generadas/{file}">
+                <img src="/static/postales_generadas/{file}" alt="postal {file}">
                 <label>
-                    <input type="checkbox" name="postal" value="{file}">
+                    <input type="checkbox" name="postal" value="{file}" style="margin-right: 5px;">
                     <span class="precio-label">✔️ 3 €</span>
                 </label>
             </div>
         '''
 
-    html += '''
-            </div>
+    # Formularios de pago
+    html += f'''
+        </div>
+        <form method="POST" action="/pagar_postales_seleccionadas" id="form_postales_multiples">
+            <input type="hidden" name="codigo" value="{codigo}">
+            <input type="hidden" name="postales_json" id="postales_json">
             <button class="shopify-button" type="submit">💳 Pagar postales seleccionadas</button>
-            <button class="shopify-button" onclick="seleccionarCincoYEnviar(event)">💳 Pagar 5 postales por 5 €</button>
         </form>
-
+        <form method="POST" action="/pagar_postales_seleccionadas" onsubmit="return enviar5postales();">
+            <input type="hidden" name="codigo" value="{codigo}">
+            <input type="hidden" name="postales_json" id="postales_json_5">
+            <button class="shopify-button">💳 Pagar 5 postales por 5 €</button>
+        </form>
         <hr>
         <h2>🍷 Selecciona vinos</h2>
         <form method="POST" action="/formulario_vino">
@@ -733,13 +734,13 @@ def view_image(codigo):
     for vino in vinos:
         nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
-                <div class="postal-wrapper">
-                    <img src="/static/Vinos/{vino}" alt="{nombre}">
-                    <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
-                    <select name="cantidad_{vino}">
-                        {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
-                    </select>
-                </div>
+            <div class="postal-wrapper">
+                <img src="/static/Vinos/{vino}" alt="{nombre}">
+                <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
+                <select name="cantidad_{vino}">
+                    {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
+                </select>
+            </div>
         '''
 
     html += '''
@@ -755,7 +756,7 @@ def view_image(codigo):
         nombre = c.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
             <div class="postal-wrapper">
-                <img src="/static/camisetas/{c}">
+                <img src="/static/camisetas/{c}" alt="{nombre}">
                 <label>{nombre}</label>
             </div>
         '''
@@ -783,18 +784,6 @@ def view_image(codigo):
                 });
             }
 
-            function seleccionarCincoYEnviar(event) {
-                event.preventDefault();
-                seleccionarCinco();
-                const checkboxes = document.querySelectorAll("input[name='postal']:checked");
-                if (checkboxes.length !== 5) {
-                    alert("Debes seleccionar exactamente 5 postales para esta oferta.");
-                    return;
-                }
-                document.getElementById("postales_json").value = JSON.stringify(Array.from(checkboxes).map(cb => cb.value));
-                document.getElementById("form_postales_multiples").submit();
-            }
-
             document.getElementById("form_postales_multiples").addEventListener("submit", function(e) {
                 const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
                 if (seleccionadas.length === 0) {
@@ -804,6 +793,16 @@ def view_image(codigo):
                 }
                 document.getElementById("postales_json").value = JSON.stringify(seleccionadas);
             });
+
+            function enviar5postales() {
+                const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
+                if (seleccionadas.length !== 5) {
+                    alert("Debes seleccionar exactamente 5 postales para esta oferta.");
+                    return false;
+                }
+                document.getElementById("postales_json_5").value = JSON.stringify(seleccionadas);
+                return true;
+            }
         </script>
     </body>
     </html>
