@@ -331,6 +331,43 @@ def checkout():
 
     except Exception as e:
         return f"Error creando sesión de pago: {str(e)}", 500
+@app.route('/checkout_multiple_postales', methods=['POST'])
+def checkout_multiple_postales():
+    codigo = request.form.get("codigo")
+    postales = request.form.getlist("postales")
+
+    if not codigo or not postales:
+        return "Faltan datos para procesar el pago", 400
+
+    line_items = []
+    for postal in postales:
+        line_items.append({
+            "price_data": {
+                "currency": "eur",
+                "product_data": {
+                    "name": f"Postal personalizada ({postal})"
+                },
+                "unit_amount": 300  # 3.00 €
+            },
+            "quantity": 1
+        })
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success_paquete",
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "codigo": codigo,
+                "tipo": "postales_multiple",
+                "postales": json.dumps(postales)
+            }
+        )
+        return redirect(session.url, code=303)
+    except Exception as e:
+        return f"❌ Error creando sesión de pago: {e}", 500
 @app.route('/webhook_stripe', methods=['POST'])
 def webhook_stripe():
     payload = request.data
@@ -347,13 +384,13 @@ def webhook_stripe():
         email = session.get('customer_email')
         metadata = session.get('metadata', {})
 
-        # Caso POSTAL: enviar email con enlace
-        if metadata.get("postal"):
+        # Caso POSTAL individual
+        if metadata.get("postal") and metadata.get("codigo"):
             postal_filename = metadata["postal"]
             enlace = f"https://postales-online.onrender.com/static/postales_generadas/{postal_filename}"
             enviar_email_profesional(email, enlace)
 
-        # Caso VINO: guardar pedido en pedidos.json
+        # Caso VINO
         elif metadata.get("tipo") == "vino":
             pedido = {
                 "fecha": datetime.utcnow().isoformat(),
@@ -361,7 +398,34 @@ def webhook_stripe():
                 "tipo": "vino",
                 "productos": json.loads(metadata.get("productos_json", "[]")),
                 "direccion": metadata.get("direccion", ""),
-                "telefono": metadata.get("telefono", "")
+                "telefono": metadata.get("telefono", ""),
+                "nombre": metadata.get("nombre", "")
+            }
+
+            pedidos_path = os.path.join(BASE, "pedidos.json")
+            pedidos_actuales = []
+            if os.path.exists(pedidos_path):
+                with open(pedidos_path) as f:
+                    try:
+                        pedidos_actuales = json.load(f)
+                    except:
+                        pedidos_actuales = []
+
+            pedidos_actuales.append(pedido)
+
+            with open(pedidos_path, "w") as f:
+                json.dump(pedidos_actuales, f, indent=2)
+
+        # Caso POSTALES múltiples
+        elif metadata.get("tipo") == "postales":
+            pedido = {
+                "fecha": datetime.utcnow().isoformat(),
+                "correo": email,
+                "tipo": "postales",
+                "productos": json.loads(metadata.get("productos_json", "[]")),
+                "direccion": "",
+                "telefono": "",
+                "nombre": ""
             }
 
             pedidos_path = os.path.join(BASE, "pedidos.json")
@@ -561,6 +625,8 @@ def buscar():
     codigo = request.args.get("codigo", "").strip()
     return redirect(f"/view_image/{codigo}")
 
+# ✅ MODIFICACIÓN 1: Vista /view_image/<codigo> con diseño responsive profesional
+
 @app.route('/view_image/<codigo>')
 def view_image(codigo):
     data = urls_cloudinary.get(codigo)
@@ -572,8 +638,10 @@ def view_image(codigo):
 
     postales_path = os.path.join(BASE, "static", "postales_generadas")
     vinos_path = os.path.join(BASE, "static", "Vinos")
+    camisetas_path = os.path.join(BASE, "static", "camisetas")
     postales_multiples = []
     vinos = []
+    camisetas = []
 
     if os.path.exists(postales_path):
         for file in os.listdir(postales_path):
@@ -582,6 +650,9 @@ def view_image(codigo):
 
     if os.path.exists(vinos_path):
         vinos = [f for f in os.listdir(vinos_path) if f.endswith((".jpg", ".png"))]
+
+    if os.path.exists(camisetas_path):
+        camisetas = [f for f in os.listdir(camisetas_path) if f.endswith((".jpg", ".png"))]
 
     html = f'''
     <!DOCTYPE html>
@@ -597,10 +668,6 @@ def view_image(codigo):
                 color: white;
                 font-family: sans-serif;
                 text-align: center;
-                touch-action: manipulation;
-                -webkit-user-select: none;
-                -webkit-touch-callout: none;
-                user-select: none;
             }}
             .scroll-container {{
                 display: flex;
@@ -619,112 +686,103 @@ def view_image(codigo):
                 border-radius: 12px;
                 padding: 8px;
                 width: 160px;
+                border: 2px solid transparent;
+            }}
+            .postal-wrapper.selected {{
+                border-color: #2ecc71;
+                box-shadow: 0 0 10px #2ecc71;
             }}
             img {{
                 width: 100%;
                 height: auto;
                 border-radius: 8px;
                 pointer-events: none;
-                -webkit-user-drag: none;
             }}
             label {{
                 display: block;
                 margin-top: 6px;
             }}
+            .precio-label {{
+                color: #2ecc71;
+                font-weight: bold;
+                font-size: 16px;
+            }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 15px 0;
+                margin: 15px 10px;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
                 display: inline-block;
             }}
-            input[type="email"], select, input[type="number"], input[type="text"] {{
-                padding: 10px;
-                font-size: 16px;
-                border-radius: 5px;
-                margin-top: 10px;
-                width: 90%;
-                max-width: 300px;
-                border: none;
-            }}
             form {{
-                margin-bottom: 40px;
+                margin-bottom: 20px;
             }}
             hr {{
-                margin: 40px 0;
-                border-color: #444;
-            }}
-            @media (min-width: 768px) {{
-                .scroll-container {{
-                    flex-wrap: wrap;
-                    justify-content: center;
-                    overflow: visible;
-                }}
-                .postal-wrapper {{
-                    width: 200px;
-                }}
+                margin: 30px 0;
+                border: 1px solid #333;
             }}
         </style>
     </head>
-    <body oncontextmenu="return false">
-        <h2>📸 Tu postal personalizada</h2>
+    <body>
+        <h2>📸 Elige tus postales favoritas</h2>
+        <button class="shopify-button" onclick="seleccionarCinco()">✅ Seleccionar 5 postales</button>
         <div class="scroll-container">
-            {''.join(f'<div class="postal-wrapper"><img src="/static/postales_generadas/{file}" alt="postal {file}"><br><label><input type="radio" name="postal" value="{file}" required> Seleccionar</label></div>' for file in postales_multiples)}
-        </div>
-
-        <div>
-            <h3>💌 Recibe tu postal seleccionada por email tras el pago</h3>
-            <form action="/checkout" method="POST">
-                <input type="hidden" name="codigo" value="{codigo}">
-                <input type="email" name="email" placeholder="Tu correo electrónico" required><br>
-                <button type="submit" class="shopify-button">💳 Pagar y recibir postal</button>
-            </form>
-        </div>
-
-        <hr>
-
-        <h2>🍷 Selecciona vinos</h2>
-        <form method="POST" action="/formulario_vino">
-            <div class="scroll-container">
     '''
 
-    for vino in vinos:
-        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+    for file in postales_multiples:
         html += f'''
-                <div class="postal-wrapper">
-                    <img src="/static/Vinos/{vino}" alt="vino {nombre}">
-                    <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
-                    <select name="cantidad_{vino}">
-                        {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
-                    </select>
-                </div>
+            <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
+                <img src="/static/postales_generadas/{file}" alt="postal {file}">
+                <label>
+                    <input type="checkbox" name="postal" value="{file}" style="margin-right: 5px;">
+                    <span class="precio-label">✔️ 3 €</span>
+                </label>
+            </div>
         '''
 
     html += f'''
-            </div>
-            <button class="shopify-button" type="submit">🍷 Pedir vinos</button>
+        </div>
+        <form method="POST" action="/pagar_postales_seleccionadas" id="form_postales_multiples">
+            <input type="hidden" name="codigo" value="{codigo}">
+            <input type="hidden" name="postales_json" id="postales_json">
+            <button class="shopify-button" type="submit">💳 Pagar postales seleccionadas (3 € c/u)</button>
         </form>
-
+        <hr>
         <script>
-            const form = document.querySelector("form[action='/checkout']");
-            form.addEventListener("submit", function(e) {{
-                const selected = document.querySelector("input[name='postal']:checked");
-                if (selected) {{
-                    const input = document.createElement("input");
-                    input.type = "hidden";
-                    input.name = "postal";
-                    input.value = selected.value;
-                    form.appendChild(input);
+            function seleccionarPostal(nombre) {{
+                const checkbox = document.querySelector(`input[value='${{nombre}}']`);
+                if (checkbox) checkbox.checked = !checkbox.checked;
+                checkbox.parentElement.parentElement.classList.toggle("selected");
+            }}
+
+            function seleccionarCinco() {{
+                const checkboxes = document.querySelectorAll("input[name='postal']");
+                let count = 0;
+                checkboxes.forEach(cb => {{
+                    if (count < 5) {{
+                        if (!cb.checked) cb.click();
+                        count++;
+                    }}
+                }});
+            }}
+
+            document.getElementById("form_postales_multiples").addEventListener("submit", function(e) {{
+                const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
+                if (seleccionadas.length === 0) {{
+                    e.preventDefault();
+                    alert("Selecciona al menos una postal para continuar.");
+                    return;
                 }}
+                document.getElementById("postales_json").value = JSON.stringify(seleccionadas);
             }});
         </script>
     </body>
     </html>
     '''
-    return html
+    return html	
 @app.route('/admin_pedidos')
 def admin_pedidos():
     token = request.args.get("token")
@@ -932,6 +990,81 @@ def success_vino():
     </body>
     </html>
     '''
+@app.route('/pagar_postales_seleccionadas', methods=['POST'])
+def pagar_postales_seleccionadas():
+    codigo = request.form.get("codigo")
+    postales_json = request.form.get("postales_json")
+    email = request.form.get("email", "anonimo@postales.com")  # opcional, por si quieres usar email en el futuro
+
+    if not codigo or not postales_json:
+        return "❌ Faltan datos para procesar el pago", 400
+
+    try:
+        postales = json.loads(postales_json)
+    except Exception as e:
+        return f"❌ Error leyendo postales seleccionadas: {e}", 400
+
+    if not postales:
+        return "❌ No se seleccionaron postales", 400
+
+    line_items = []
+    for p in postales:
+        nombre_limpio = p.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+        line_items.append({
+            "price_data": {
+                "currency": "eur",
+                "product_data": {"name": f"Postal {nombre_limpio}"},
+                "unit_amount": 300  # 3.00 €
+            },
+            "quantity": 1
+        })
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success",
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "codigo": codigo,
+                "tipo": "postales",
+                "productos_json": json.dumps([
+                    {"producto": p, "cantidad": 1} for p in postales
+                ])
+            }
+        )
+        return redirect(session.url, code=303)
+    except Exception as e:
+        return f"❌ Error creando sesión de Stripe: {e}", 500
+@app.route('/descargar_postales', methods=['POST'])
+def descargar_postales():
+    postales_json = request.form.get("postales_json")
+    if not postales_json:
+        return "No se recibieron postales", 400
+
+    try:
+        postales = json.loads(postales_json)
+    except:
+        return "Formato de datos inválido", 400
+
+    import zipfile
+    from flask import send_file
+
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+        for p in postales:
+            p_path = os.path.join(BASE, "static", "postales_generadas", p)
+            if os.path.exists(p_path):
+                zip_file.write(p_path, arcname=p)
+    zip_buffer.seek(0)
+
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='postales_seleccionadas.zip'
+    )
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
