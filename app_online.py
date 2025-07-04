@@ -1035,7 +1035,7 @@ def pagar_postales_seleccionadas():
             payment_method_types=["card"],
             line_items=line_items,
             mode="payment",
-            success_url="https://postales-online.onrender.com/success",
+            success_url = f"https://postales-online.onrender.com/success?postales_json={json.dumps(postales)}"
             cancel_url="https://postales-online.onrender.com/cancel",
             metadata={
                 "codigo": codigo,
