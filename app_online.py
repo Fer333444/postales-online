@@ -446,12 +446,44 @@ def webhook_stripe():
 @app.route('/success')
 def success():
     codigo = request.args.get("codigo", "")
-    postal = request.args.get("postal", "")  # postal seleccionada
+    postal = request.args.get("postal", "")
+    postales_json = request.args.get("postales_json", "")
 
-    enlace = f"/static/postales_generadas/{postal}" if postal else ""
+    descarga_html = ""
+    if postales_json:
+        try:
+            postales = json.loads(postales_json)
+            if len(postales) == 1:
+                enlace = f"/static/postales_generadas/{postales[0]}"
+                descarga_html = f'''
+                    <div class="preview">
+                        <img src="{enlace}">
+                        <br>
+                        <a class="button" href="{enlace}" download>⬇️ Descargar postal</a>
+                    </div>
+                '''
+            elif len(postales) > 1:
+                descarga_html = f'''
+                    <form method="POST" action="/descargar_postales">
+                        <input type="hidden" name="postales_json" value='{json.dumps(postales)}'>
+                        <button class="button" type="submit">⬇️ Descargar todas las postales (ZIP)</button>
+                    </form>
+                '''
+        except:
+            descarga_html = "<p>⚠️ No se pudo procesar el archivo correctamente.</p>"
+    elif postal:
+        enlace = f"/static/postales_generadas/{postal}"
+        descarga_html = f'''
+            <div class="preview">
+                <img src="{enlace}">
+                <br>
+                <a class="button" href="{enlace}" download>⬇️ Descargar postal</a>
+            </div>
+        '''
+    else:
+        descarga_html = "<p>Pero no se pudo identificar el archivo.</p>"
 
     return f'''
-    <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8">
@@ -468,7 +500,6 @@ def success():
                 height: 100vh;
                 margin: 0;
             }}
-
             .card {{
                 background-color: #1e1e1e;
                 padding: 40px;
@@ -477,52 +508,7 @@ def success():
                 box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
                 border: 2px solid #2ecc71;
             }}
-
-            .checkmark {{
-                width: 80px;
-                height: 80px;
-                border-radius: 50%;
-                display: block;
-                stroke-width: 2;
-                stroke: #2ecc71;
-                stroke-miterlimit: 10;
-                margin: 0 auto 20px;
-                box-shadow: inset 0px 0px 0px #2ecc71;
-                animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
-            }}
-
-            .checkmark__circle {{
-                stroke-dasharray: 166;
-                stroke-dashoffset: 166;
-                stroke-width: 2;
-                stroke-miterlimit: 10;
-                stroke: #2ecc71;
-                fill: none;
-                animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-            }}
-
-            .checkmark__check {{
-                transform-origin: 50% 50%;
-                stroke-dasharray: 48;
-                stroke-dashoffset: 48;
-                animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
-            }}
-
-            @keyframes stroke {{
-                100% {{ stroke-dashoffset: 0; }}
-            }}
-
-            @keyframes scale {{
-                0%, 100% {{ transform: none; }}
-                50% {{ transform: scale3d(1.1, 1.1, 1); }}
-            }}
-
-            @keyframes fill {{
-                100% {{ box-shadow: inset 0px 0px 0px 30px #2ecc71; }}
-            }}
-
-            a.button {{
-                display: inline-block;
+            .button {{
                 margin-top: 20px;
                 background: #2ecc71;
                 color: white;
@@ -530,12 +516,9 @@ def success():
                 text-decoration: none;
                 border-radius: 8px;
                 font-weight: bold;
+                border: none;
+                cursor: pointer;
             }}
-
-            .preview {{
-                margin-top: 20px;
-            }}
-
             .preview img {{
                 max-width: 280px;
                 border-radius: 10px;
@@ -545,13 +528,9 @@ def success():
     </head>
     <body>
         <div class="card">
-            <svg class="checkmark" viewBox="0 0 52 52">
-              <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
-              <path class="checkmark__check" fill="none" d="M14 27l7 7 16-16"/>
-            </svg>
             <h2>✅ ¡Pago exitoso!</h2>
             <p>Tu postal ha sido procesada correctamente.</p>
-            {'<div class="preview"><img src="' + enlace + '"><br><a class="button" href="' + enlace + '" download>⬇️ Descargar postal</a></div>' if enlace else '<p>Pero no se pudo identificar el archivo.</p>'}
+            {descarga_html}
             <p><a class="button" href="/">↩️ Volver al inicio</a></p>
         </div>
     </body>
