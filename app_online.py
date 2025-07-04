@@ -1098,34 +1098,42 @@ def pagar_paquete_cinco():
 # Agregar ruta para pagar camisetas con tallas y cantidad
 @app.route('/pagar_camisetas', methods=['POST'])
 def pagar_camisetas():
-    email = request.form.get("email")
-    nombre = request.form.get("nombre")
+    email = request.form.get("email", "cliente@ejemplo.com")
     camisetas_json = request.form.get("camisetas_json")
 
-    if not email or not camisetas_json:
-        return "Faltan datos", 400
+    if not camisetas_json:
+        return "❌ No se recibieron camisetas", 400
 
     try:
         camisetas = json.loads(camisetas_json)
     except:
-        return "Formato de camisetas incorrecto", 400
+        return "❌ Error en formato de datos de camisetas", 400
+
+    precios = {
+        "camiseta_blanca.png": 1500,  # 15 €
+        "camiseta_blanca_mujer.png": 1500
+    }
 
     line_items = []
     for item in camisetas:
-        producto = item.get("producto")
-        talla = item.get("talla")
+        nombre = item.get("producto")
         cantidad = int(item.get("cantidad", 1))
-
-        nombre_formateado = f"Camiseta {producto} (Talla {talla})"
+        talla = item.get("talla", "M")
+        precio_unitario = precios.get(nombre, 1500)
 
         line_items.append({
             "price_data": {
                 "currency": "eur",
-                "product_data": {"name": nombre_formateado},
-                "unit_amount": 1500  # 15.00 €
+                "product_data": {
+                    "name": f"{nombre.replace('.png','').replace('_',' ').title()} - Talla {talla}"
+                },
+                "unit_amount": precio_unitario
             },
             "quantity": cantidad
         })
+
+    if not line_items:
+        return "❌ No hay productos válidos", 400
 
     try:
         session = stripe.checkout.Session.create(
@@ -1138,41 +1146,12 @@ def pagar_camisetas():
             metadata={
                 "tipo": "camisetas",
                 "correo": email,
-                "nombre": nombre,
                 "productos_json": json.dumps(camisetas)
             }
         )
         return redirect(session.url, code=303)
     except Exception as e:
-        return f"Error creando sesión: {e}", 500
-
-
-# Agregar en el webhook el caso camisetas
-# Dentro de webhook_stripe(), justo antes del return ''
-elif metadata.get("tipo") == "camisetas":
-    pedido = {
-        "fecha": datetime.utcnow().isoformat(),
-        "correo": metadata.get("correo"),
-        "tipo": "camisetas",
-        "productos": json.loads(metadata.get("productos_json", "[]")),
-        "direccion": "",
-        "telefono": "",
-        "nombre": metadata.get("nombre", "")
-    }
-
-    pedidos_path = os.path.join(BASE, "pedidos.json")
-    pedidos_actuales = []
-    if os.path.exists(pedidos_path):
-        with open(pedidos_path) as f:
-            try:
-                pedidos_actuales = json.load(f)
-            except:
-                pedidos_actuales = []
-
-    pedidos_actuales.append(pedido)
-
-    with open(pedidos_path, "w") as f:
-        json.dump(pedidos_actuales, f, indent=2)
+        return f"❌ Error creando sesión de pago: {e}", 500
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
