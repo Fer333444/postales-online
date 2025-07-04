@@ -676,9 +676,6 @@ def view_image(codigo):
                 gap: 12px;
                 padding: 10px;
             }}
-            .scroll-container::-webkit-scrollbar {{
-                display: none;
-            }}
             .postal-wrapper {{
                 flex: 0 0 auto;
                 scroll-snap-align: center;
@@ -692,37 +689,30 @@ def view_image(codigo):
                 border-color: #2ecc71;
                 box-shadow: 0 0 10px #2ecc71;
             }}
+            .scroll-container::-webkit-scrollbar {{
+                display: none;
+            }}
             img {{
                 width: 100%;
-                height: auto;
                 border-radius: 8px;
                 pointer-events: none;
-            }}
-            label {{
-                display: block;
-                margin-top: 6px;
             }}
             .precio-label {{
                 color: #2ecc71;
                 font-weight: bold;
-                font-size: 16px;
             }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 15px 10px;
+                margin: 15px 5px;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
-                display: inline-block;
-            }}
-            form {{
-                margin-bottom: 20px;
             }}
             hr {{
-                margin: 30px 0;
                 border: 1px solid #333;
+                margin: 40px 0;
             }}
         </style>
     </head>
@@ -748,22 +738,64 @@ def view_image(codigo):
         <form method="POST" action="/pagar_postales_seleccionadas" id="form_postales_multiples">
             <input type="hidden" name="codigo" value="{codigo}">
             <input type="hidden" name="postales_json" id="postales_json">
-            <button class="shopify-button" type="submit">💳 Pagar postales seleccionadas (3 € c/u)</button>
+            <button class="shopify-button" type="submit">💳 Pagar postales seleccionadas</button>
         </form>
         <hr>
+        <h2>🍷 Selecciona vinos</h2>
+        <form method="POST" action="/formulario_vino">
+            <div class="scroll-container">
+    '''
+
+    for vino in vinos:
+        nombre = vino.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+        html += f'''
+                <div class="postal-wrapper">
+                    <img src="/static/Vinos/{vino}" alt="{nombre}">
+                    <label>
+                        <input type="checkbox" name="vino" value="{vino}"> {nombre}
+                    </label><br>
+                    <select name="cantidad_{vino}">
+                        {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
+                    </select>
+                </div>
+        '''
+
+    html += '''
+            </div>
+            <button class="shopify-button" type="submit">🍷 Pagar pedido de vinos</button>
+        </form>
+        <hr>
+        <h2>👕 Camisetas personalizadas</h2>
+        <div class="scroll-container">
+    '''
+
+    for c in camisetas:
+        nombre = c.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+        html += f'''
+            <div class="postal-wrapper">
+                <img src="/static/camisetas/{c}" alt="{nombre}">
+                <label>{nombre}</label>
+            </div>
+        '''
+
+    html += f'''
+        </div>
         <script>
             function seleccionarPostal(nombre) {{
                 const checkbox = document.querySelector(`input[value='${{nombre}}']`);
-                if (checkbox) checkbox.checked = !checkbox.checked;
-                checkbox.parentElement.parentElement.classList.toggle("selected");
+                if (checkbox) {{
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.parentElement.parentElement.classList.toggle("selected");
+                }}
             }}
 
             function seleccionarCinco() {{
                 const checkboxes = document.querySelectorAll("input[name='postal']");
                 let count = 0;
                 checkboxes.forEach(cb => {{
-                    if (count < 5) {{
-                        if (!cb.checked) cb.click();
+                    if (!cb.checked && count < 5) {{
+                        cb.checked = true;
+                        cb.parentElement.parentElement.classList.add("selected");
                         count++;
                     }}
                 }});
@@ -773,7 +805,7 @@ def view_image(codigo):
                 const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
                 if (seleccionadas.length === 0) {{
                     e.preventDefault();
-                    alert("Selecciona al menos una postal para continuar.");
+                    alert("Selecciona al menos una postal para pagar.");
                     return;
                 }}
                 document.getElementById("postales_json").value = JSON.stringify(seleccionadas);
@@ -782,7 +814,7 @@ def view_image(codigo):
     </body>
     </html>
     '''
-    return html	
+    return html
 @app.route('/admin_pedidos')
 def admin_pedidos():
     token = request.args.get("token")
