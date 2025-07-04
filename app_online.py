@@ -402,20 +402,6 @@ def webhook_stripe():
                 "nombre": metadata.get("nombre", "")
             }
 
-            pedidos_path = os.path.join(BASE, "pedidos.json")
-            pedidos_actuales = []
-            if os.path.exists(pedidos_path):
-                with open(pedidos_path) as f:
-                    try:
-                        pedidos_actuales = json.load(f)
-                    except:
-                        pedidos_actuales = []
-
-            pedidos_actuales.append(pedido)
-
-            with open(pedidos_path, "w") as f:
-                json.dump(pedidos_actuales, f, indent=2)
-
         # Caso POSTALES múltiples
         elif metadata.get("tipo") == "postales":
             pedido = {
@@ -428,19 +414,34 @@ def webhook_stripe():
                 "nombre": ""
             }
 
-            pedidos_path = os.path.join(BASE, "pedidos.json")
-            pedidos_actuales = []
-            if os.path.exists(pedidos_path):
-                with open(pedidos_path) as f:
-                    try:
-                        pedidos_actuales = json.load(f)
-                    except:
-                        pedidos_actuales = []
+        # Caso CAMISETAS
+        elif metadata.get("tipo") == "camisetas":
+            pedido = {
+                "fecha": datetime.utcnow().isoformat(),
+                "correo": email,
+                "tipo": "camisetas",
+                "productos": json.loads(metadata.get("productos_json", "[]")),
+                "direccion": "",
+                "telefono": "",
+                "nombre": ""
+            }
 
-            pedidos_actuales.append(pedido)
+        else:
+            return '', 200  # No se reconoce el tipo
 
-            with open(pedidos_path, "w") as f:
-                json.dump(pedidos_actuales, f, indent=2)
+        pedidos_path = os.path.join(BASE, "pedidos.json")
+        pedidos_actuales = []
+        if os.path.exists(pedidos_path):
+            with open(pedidos_path) as f:
+                try:
+                    pedidos_actuales = json.load(f)
+                except:
+                    pedidos_actuales = []
+
+        pedidos_actuales.append(pedido)
+
+        with open(pedidos_path, "w") as f:
+            json.dump(pedidos_actuales, f, indent=2)
 
     return '', 200
 @app.route('/success')
@@ -637,66 +638,22 @@ def view_image(codigo):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Tu postal personalizada</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Vista del código {codigo}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            html, body {{
-                margin: 0;
-                padding: 0;
-                background-color: #111;
-                color: white;
-                font-family: sans-serif;
-                text-align: center;
-            }}
-            .scroll-container {{
-                display: flex;
-                overflow-x: auto;
-                scroll-snap-type: x mandatory;
-                gap: 12px;
-                padding: 10px;
-            }}
-            .postal-wrapper {{
-                flex: 0 0 auto;
-                scroll-snap-align: center;
-                background-color: #222;
-                border-radius: 12px;
-                padding: 8px;
-                width: 160px;
-                border: 2px solid transparent;
-            }}
-            .postal-wrapper.selected {{
-                border-color: #2ecc71;
-                box-shadow: 0 0 10px #2ecc71;
-            }}
-            .scroll-container::-webkit-scrollbar {{
-                display: none;
-            }}
-            img {{
-                width: 100%;
-                border-radius: 8px;
-                pointer-events: none;
-            }}
-            .precio-label {{
-                color: #2ecc71;
-                font-weight: bold;
-            }}
-            .shopify-button {{
-                background-color: #2ecc71;
-                color: white;
-                padding: 10px 20px;
-                margin: 15px 5px;
-                border: none;
-                border-radius: 5px;
-                text-decoration: none;
-            }}
-            hr {{
-                border: 1px solid #333;
-                margin: 40px 0;
-            }}
+            body {{ background: #111; color: white; font-family: sans-serif; margin: 0; padding: 0; text-align: center; }}
+            .scroll-container {{ display: flex; overflow-x: auto; gap: 10px; padding: 10px; }}
+            .scroll-container::-webkit-scrollbar {{ display: none; }}
+            .postal-wrapper {{ background: #222; border-radius: 10px; padding: 10px; width: 160px; flex: 0 0 auto; border: 2px solid transparent; }}
+            .postal-wrapper.selected {{ border-color: #2ecc71; box-shadow: 0 0 10px #2ecc71; }}
+            img {{ width: 100%; border-radius: 8px; }}
+            .precio-label {{ color: #2ecc71; font-weight: bold; }}
+            .shopify-button {{ background: #2ecc71; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 10px; }}
+            select, input[type=number] {{ margin-top: 5px; }}
         </style>
     </head>
     <body>
-        <h2>📸 Elige tus postales favoritas</h2>
+        <h2>📸 Elige tus postales</h2>
         <button class="shopify-button" onclick="seleccionarCinco()">✅ Seleccionar 5 postales</button>
         <div class="scroll-container">
     '''
@@ -704,15 +661,11 @@ def view_image(codigo):
     for file in postales_multiples:
         html += f'''
             <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
-                <img src="/static/postales_generadas/{file}" alt="postal {file}">
-                <label>
-                    <input type="checkbox" name="postal" value="{file}" style="margin-right: 5px;">
-                    <span class="precio-label">✔️ 3 €</span>
-                </label>
+                <img src="/static/postales_generadas/{file}" alt="{file}">
+                <label><input type="checkbox" name="postal" value="{file}" style="margin-right: 5px;"><span class="precio-label">✔️ 3 €</span></label>
             </div>
         '''
 
-    # Formularios de pago
     html += f'''
         </div>
         <form method="POST" action="/pagar_postales_seleccionadas" id="form_postales_multiples">
@@ -725,8 +678,7 @@ def view_image(codigo):
             <input type="hidden" name="postales_json" id="postales_json_5">
             <button class="shopify-button">💳 Pagar 5 postales por 5 €</button>
         </form>
-        <hr>
-        <h2>🍷 Selecciona vinos</h2>
+        <hr><h2>🍷 Vinos disponibles</h2>
         <form method="POST" action="/formulario_vino">
             <div class="scroll-container">
     '''
@@ -737,19 +689,17 @@ def view_image(codigo):
             <div class="postal-wrapper">
                 <img src="/static/Vinos/{vino}" alt="{nombre}">
                 <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
-                <select name="cantidad_{vino}">
-                    {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
-                </select>
+                <select name="cantidad_{vino}">{''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}</select>
             </div>
         '''
 
-    html += '''
+    html += f'''
             </div>
-            <button class="shopify-button" type="submit">🍷 Pagar pedido de vinos</button>
+            <button class="shopify-button" type="submit">🍷 Pedir vinos</button>
         </form>
-        <hr>
-        <h2>👕 Camisetas personalizadas</h2>
-        <div class="scroll-container">
+        <hr><h2>👕 Camisetas personalizadas</h2>
+        <form method="POST" action="/pagar_camisetas">
+            <div class="scroll-container">
     '''
 
     for c in camisetas:
@@ -757,52 +707,64 @@ def view_image(codigo):
         html += f'''
             <div class="postal-wrapper">
                 <img src="/static/camisetas/{c}" alt="{nombre}">
-                <label>{nombre}</label>
+                <label>{nombre}</label><br>
+                <label>Talla:
+                    <select name="talla_{c}">
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                    </select>
+                </label><br>
+                <label>Cantidad:
+                    <input type="number" name="cantidad_{c}" min="0" max="10" value="0">
+                </label>
             </div>
         '''
 
-    html += '''
-        </div>
-        <script>
-            function seleccionarPostal(nombre) {
-                const checkbox = document.querySelector(`input[value='${nombre}']`);
-                if (checkbox) {
-                    checkbox.checked = !checkbox.checked;
-                    checkbox.parentElement.parentElement.classList.toggle("selected");
-                }
-            }
+    html += f'''
+            </div>
+            <input type="hidden" name="codigo" value="{codigo}">
+            <button class="shopify-button" type="submit">👕 Comprar camisetas</button>
+        </form>
 
-            function seleccionarCinco() {
-                const checkboxes = document.querySelectorAll("input[name='postal']");
+        <script>
+            function seleccionarPostal(nombre) {{
+                const cb = document.querySelector(`input[value='${{nombre}}']`);
+                if (cb) {{ cb.checked = !cb.checked; cb.parentElement.parentElement.classList.toggle("selected"); }}
+            }}
+
+            function seleccionarCinco() {{
+                let checkboxes = document.querySelectorAll("input[name='postal']");
                 let count = 0;
-                checkboxes.forEach(cb => {
-                    if (!cb.checked && count < 5) {
+                checkboxes.forEach(cb => {{
+                    if (!cb.checked && count < 5) {{
                         cb.checked = true;
                         cb.parentElement.parentElement.classList.add("selected");
                         count++;
-                    }
-                });
-            }
+                    }}
+                }});
+            }}
 
-            document.getElementById("form_postales_multiples").addEventListener("submit", function(e) {
-                const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
-                if (seleccionadas.length === 0) {
+            document.getElementById("form_postales_multiples").addEventListener("submit", function(e) {{
+                let seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
+                if (seleccionadas.length === 0) {{
                     e.preventDefault();
-                    alert("Selecciona al menos una postal para pagar.");
+                    alert("Selecciona al menos una postal.");
                     return;
-                }
+                }}
                 document.getElementById("postales_json").value = JSON.stringify(seleccionadas);
-            });
+            }});
 
-            function enviar5postales() {
-                const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
-                if (seleccionadas.length !== 5) {
-                    alert("Debes seleccionar exactamente 5 postales para esta oferta.");
+            function enviar5postales() {{
+                let seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
+                if (seleccionadas.length !== 5) {{
+                    alert("Debes seleccionar exactamente 5 postales.");
                     return false;
-                }
+                }}
                 document.getElementById("postales_json_5").value = JSON.stringify(seleccionadas);
                 return true;
-            }
+            }}
         </script>
     </body>
     </html>
@@ -1133,6 +1095,84 @@ def pagar_paquete_cinco():
         return redirect(session.url, code=303)
     except Exception as e:
         return f"❌ Error creando pago: {e}", 500
+# Agregar ruta para pagar camisetas con tallas y cantidad
+@app.route('/pagar_camisetas', methods=['POST'])
+def pagar_camisetas():
+    email = request.form.get("email")
+    nombre = request.form.get("nombre")
+    camisetas_json = request.form.get("camisetas_json")
+
+    if not email or not camisetas_json:
+        return "Faltan datos", 400
+
+    try:
+        camisetas = json.loads(camisetas_json)
+    except:
+        return "Formato de camisetas incorrecto", 400
+
+    line_items = []
+    for item in camisetas:
+        producto = item.get("producto")
+        talla = item.get("talla")
+        cantidad = int(item.get("cantidad", 1))
+
+        nombre_formateado = f"Camiseta {producto} (Talla {talla})"
+
+        line_items.append({
+            "price_data": {
+                "currency": "eur",
+                "product_data": {"name": nombre_formateado},
+                "unit_amount": 1500  # 15.00 €
+            },
+            "quantity": cantidad
+        })
+
+    try:
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success",
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "tipo": "camisetas",
+                "correo": email,
+                "nombre": nombre,
+                "productos_json": json.dumps(camisetas)
+            }
+        )
+        return redirect(session.url, code=303)
+    except Exception as e:
+        return f"Error creando sesión: {e}", 500
+
+
+# Agregar en el webhook el caso camisetas
+# Dentro de webhook_stripe(), justo antes del return ''
+elif metadata.get("tipo") == "camisetas":
+    pedido = {
+        "fecha": datetime.utcnow().isoformat(),
+        "correo": metadata.get("correo"),
+        "tipo": "camisetas",
+        "productos": json.loads(metadata.get("productos_json", "[]")),
+        "direccion": "",
+        "telefono": "",
+        "nombre": metadata.get("nombre", "")
+    }
+
+    pedidos_path = os.path.join(BASE, "pedidos.json")
+    pedidos_actuales = []
+    if os.path.exists(pedidos_path):
+        with open(pedidos_path) as f:
+            try:
+                pedidos_actuales = json.load(f)
+            except:
+                pedidos_actuales = []
+
+    pedidos_actuales.append(pedido)
+
+    with open(pedidos_path, "w") as f:
+        json.dump(pedidos_actuales, f, indent=2)
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
