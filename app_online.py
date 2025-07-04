@@ -638,11 +638,10 @@ def view_image(codigo):
     <html>
     <head>
         <title>Tu postal personalizada</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             html, body {{
-                margin: 0;
-                padding: 0;
+                margin: 0; padding: 0;
                 background-color: #111;
                 color: white;
                 font-family: sans-serif;
@@ -655,6 +654,7 @@ def view_image(codigo):
                 gap: 12px;
                 padding: 10px;
             }}
+            .scroll-container::-webkit-scrollbar {{ display: none; }}
             .postal-wrapper {{
                 flex: 0 0 auto;
                 scroll-snap-align: center;
@@ -668,26 +668,29 @@ def view_image(codigo):
                 border-color: #2ecc71;
                 box-shadow: 0 0 10px #2ecc71;
             }}
-            .scroll-container::-webkit-scrollbar {{
-                display: none;
-            }}
             img {{
                 width: 100%;
                 border-radius: 8px;
                 pointer-events: none;
             }}
+            label {{
+                display: block;
+                margin-top: 6px;
+            }}
             .precio-label {{
                 color: #2ecc71;
                 font-weight: bold;
+                font-size: 16px;
             }}
             .shopify-button {{
                 background-color: #2ecc71;
                 color: white;
                 padding: 10px 20px;
-                margin: 15px 5px;
+                margin: 10px 5px;
                 border: none;
                 border-radius: 5px;
                 text-decoration: none;
+                font-weight: bold;
             }}
             hr {{
                 border: 1px solid #333;
@@ -698,27 +701,29 @@ def view_image(codigo):
     <body>
         <h2>📸 Elige tus postales favoritas</h2>
         <button class="shopify-button" onclick="seleccionarCinco()">✅ Seleccionar 5 postales</button>
-        <div class="scroll-container">
+        <form method="POST" action="/pagar_postales_seleccionadas" id="form_postales_multiples">
+            <input type="hidden" name="codigo" value="{codigo}">
+            <input type="hidden" name="postales_json" id="postales_json">
+            <div class="scroll-container">
     '''
 
     for file in postales_multiples:
         html += f'''
             <div class="postal-wrapper" onclick="seleccionarPostal('{file}')">
-                <img src="/static/postales_generadas/{file}" alt="postal {file}">
+                <img src="/static/postales_generadas/{file}">
                 <label>
-                    <input type="checkbox" name="postal" value="{file}" style="margin-right: 5px;">
+                    <input type="checkbox" name="postal" value="{file}">
                     <span class="precio-label">✔️ 3 €</span>
                 </label>
             </div>
         '''
 
-    html += f'''
-        </div>
-        <form method="POST" action="/pagar_postales_seleccionadas" id="form_postales_multiples">
-            <input type="hidden" name="codigo" value="{codigo}">
-            <input type="hidden" name="postales_json" id="postales_json">
+    html += '''
+            </div>
             <button class="shopify-button" type="submit">💳 Pagar postales seleccionadas</button>
+            <button class="shopify-button" onclick="seleccionarCincoYEnviar(event)">💳 Pagar 5 postales por 5 €</button>
         </form>
+
         <hr>
         <h2>🍷 Selecciona vinos</h2>
         <form method="POST" action="/formulario_vino">
@@ -730,9 +735,7 @@ def view_image(codigo):
         html += f'''
                 <div class="postal-wrapper">
                     <img src="/static/Vinos/{vino}" alt="{nombre}">
-                    <label>
-                        <input type="checkbox" name="vino" value="{vino}"> {nombre}
-                    </label><br>
+                    <label><input type="checkbox" name="vino" value="{vino}"> {nombre}</label><br>
                     <select name="cantidad_{vino}">
                         {''.join(f'<option value="{i}">{i}</option>' for i in range(0, 11))}
                     </select>
@@ -752,43 +755,55 @@ def view_image(codigo):
         nombre = c.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         html += f'''
             <div class="postal-wrapper">
-                <img src="/static/camisetas/{c}" alt="{nombre}">
+                <img src="/static/camisetas/{c}">
                 <label>{nombre}</label>
             </div>
         '''
 
-    html += f'''
+    html += '''
         </div>
         <script>
-            function seleccionarPostal(nombre) {{
-                const checkbox = document.querySelector(`input[value='${{nombre}}']`);
-                if (checkbox) {{
+            function seleccionarPostal(nombre) {
+                const checkbox = document.querySelector(`input[value='${nombre}']`);
+                if (checkbox) {
                     checkbox.checked = !checkbox.checked;
                     checkbox.parentElement.parentElement.classList.toggle("selected");
-                }}
-            }}
+                }
+            }
 
-            function seleccionarCinco() {{
+            function seleccionarCinco() {
                 const checkboxes = document.querySelectorAll("input[name='postal']");
                 let count = 0;
-                checkboxes.forEach(cb => {{
-                    if (!cb.checked && count < 5) {{
+                checkboxes.forEach(cb => {
+                    if (!cb.checked && count < 5) {
                         cb.checked = true;
                         cb.parentElement.parentElement.classList.add("selected");
                         count++;
-                    }}
-                }});
-            }}
+                    }
+                });
+            }
 
-            document.getElementById("form_postales_multiples").addEventListener("submit", function(e) {{
+            function seleccionarCincoYEnviar(event) {
+                event.preventDefault();
+                seleccionarCinco();
+                const checkboxes = document.querySelectorAll("input[name='postal']:checked");
+                if (checkboxes.length !== 5) {
+                    alert("Debes seleccionar exactamente 5 postales para esta oferta.");
+                    return;
+                }
+                document.getElementById("postales_json").value = JSON.stringify(Array.from(checkboxes).map(cb => cb.value));
+                document.getElementById("form_postales_multiples").submit();
+            }
+
+            document.getElementById("form_postales_multiples").addEventListener("submit", function(e) {
                 const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(x => x.value);
-                if (seleccionadas.length === 0) {{
+                if (seleccionadas.length === 0) {
                     e.preventDefault();
                     alert("Selecciona al menos una postal para pagar.");
                     return;
-                }}
+                }
                 document.getElementById("postales_json").value = JSON.stringify(seleccionadas);
-            }});
+            });
         </script>
     </body>
     </html>
@@ -1005,7 +1020,7 @@ def success_vino():
 def pagar_postales_seleccionadas():
     codigo = request.form.get("codigo")
     postales_json = request.form.get("postales_json")
-    email = request.form.get("email", "anonimo@postales.com")  # opcional, por si quieres usar email en el futuro
+    email = request.form.get("email", "anonimo@postales.com")  # opcional
 
     if not codigo or not postales_json:
         return "❌ Faltan datos para procesar el pago", 400
@@ -1019,26 +1034,31 @@ def pagar_postales_seleccionadas():
         return "❌ No se seleccionaron postales", 400
 
     line_items = []
+    precio_unitario = 300  # 3 € por defecto
+
+    if len(postales) == 5:
+        # Si seleccionaron 5, se cobra 5 € total (1 €/unidad)
+        precio_unitario = 100
+
     for p in postales:
         nombre_limpio = p.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
         line_items.append({
             "price_data": {
                 "currency": "eur",
                 "product_data": {"name": f"Postal {nombre_limpio}"},
-                "unit_amount": 300  # 3.00 €
+                "unit_amount": precio_unitario
             },
             "quantity": 1
         })
 
-    import urllib.parse
-    postales_json_encoded = urllib.parse.quote(json.dumps(postales))
+    success_params = f"?codigo={codigo}&postales_json={json.dumps(postales)}"
 
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=line_items,
             mode="payment",
-            success_url=f"https://postales-online.onrender.com/success?postales_json={postales_json_encoded}",
+            success_url="https://postales-online.onrender.com/success" + success_params,
             cancel_url="https://postales-online.onrender.com/cancel",
             metadata={
                 "codigo": codigo,
@@ -1051,6 +1071,7 @@ def pagar_postales_seleccionadas():
         return redirect(session.url, code=303)
     except Exception as e:
         return f"❌ Error creando sesión de Stripe: {e}", 500
+
 @app.route('/descargar_postales', methods=['POST'])
 def descargar_postales():
     postales_json = request.form.get("postales_json")
@@ -1079,6 +1100,40 @@ def descargar_postales():
         as_attachment=True,
         download_name='postales_seleccionadas.zip'
     )
+@app.route('/pagar_paquete_cinco', methods=['POST'])
+def pagar_paquete_cinco():
+    codigo = request.form.get("codigo")
+    postales_json = request.form.get("postales_json")
+
+    if not codigo or not postales_json:
+        return "❌ Faltan datos", 400
+
+    try:
+        postales = json.loads(postales_json)
+    except:
+        return "❌ Error en formato de postales", 400
+
+    if len(postales) != 5:
+        return "❌ Deben ser exactamente 5 postales", 400
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": f"Paquete 5 postales ({codigo})"},
+                    "unit_amount": 500
+                },
+                "quantity": 1
+            }],
+            mode="payment",
+            success_url=f"https://postales-online.onrender.com/success?codigo={codigo}&postales_json={json.dumps(postales)}",
+            cancel_url="https://postales-online.onrender.com/cancel"
+        )
+        return redirect(session.url, code=303)
+    except Exception as e:
+        return f"❌ Error creando pago: {e}", 500
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
