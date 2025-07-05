@@ -628,10 +628,10 @@ def view_image(codigo):
     </head>
     <body>
         <h2>📸 Elige tus postales favoritas</h2>
-        <button class="shopify-button" onclick="seleccionar5YEnviar()">💳 Pagar 5 postales por 5 €</button>
-        <form method="POST" action="/formulario_pago" id="formulario_producto">
+
+        <form method="POST" action="/pagar_postales_directo" id="form_postales">
             <input type="hidden" name="codigo" value="{{ codigo }}">
-            <input type="hidden" name="productos_json" id="productos_json">
+            <input type="hidden" name="postales_json" id="postales_json">
             <div class="scroll-container">
                 {% for file in postales %}
                     <div class="postal-wrapper" onclick="seleccionarPostal('{{ file }}')">
@@ -640,7 +640,13 @@ def view_image(codigo):
                     </div>
                 {% endfor %}
             </div>
-            <h2>🍷 Vinos</h2>
+            <button class="shopify-button" type="submit">💳 Pagar postales seleccionadas</button>
+        </form>
+
+        <h2>🍷 Vinos</h2>
+        <form method="POST" action="/formulario_pago" id="form_productos">
+            <input type="hidden" name="codigo" value="{{ codigo }}">
+            <input type="hidden" name="productos_json" id="productos_json">
             <div class="scroll-container">
                 {% for vino in vinos %}
                     <div class="postal-wrapper">
@@ -652,6 +658,7 @@ def view_image(codigo):
                     </div>
                 {% endfor %}
             </div>
+
             <h2>👕 Camisetas</h2>
             <div class="scroll-container">
                 {% for c in camisetas %}
@@ -683,22 +690,17 @@ def view_image(codigo):
                 }
             }
 
-            function seleccionar5YEnviar() {
-                const cbx = Array.from(document.querySelectorAll("input[name='postal']"));
-                let seleccionadas = [];
-                cbx.forEach(cb => {
-                    if (!cb.checked && seleccionadas.length < 5) {
-                        cb.checked = true;
-                        cb.closest('.postal-wrapper').classList.add("selected");
-                        seleccionadas.push(cb.value);
-                    }
-                });
-                document.getElementById("productos_json").value = JSON.stringify(seleccionadas.map(p => ({ producto: p, cantidad: 1 })));
-                document.getElementById("formulario_producto").submit();
-            }
+            document.getElementById("form_postales").addEventListener("submit", function(e) {
+                const seleccionadas = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(p => p.value);
+                if (seleccionadas.length === 0) {
+                    e.preventDefault();
+                    alert("Selecciona al menos una postal para pagar.");
+                    return;
+                }
+                document.getElementById("postales_json").value = JSON.stringify(seleccionadas);
+            });
 
-            document.getElementById("formulario_producto").addEventListener("submit", function(e) {
-                const postales = Array.from(document.querySelectorAll("input[name='postal']:checked")).map(p => ({ producto: p.value, cantidad: 1 }));
+            document.getElementById("form_productos").addEventListener("submit", function(e) {
                 const vinos = Array.from(document.querySelectorAll("input[name='vino']:checked")).map(v => {
                     const cantidad = parseInt(document.querySelector(`select[name='cantidad_${v.value}']`).value || 0);
                     return { producto: v.value, cantidad };
@@ -708,11 +710,10 @@ def view_image(codigo):
                     const talla = document.querySelector(`select[name='talla_${c.value}']`).value;
                     return { producto: c.value, cantidad, talla };
                 }).filter(c => c.cantidad > 0);
-
-                const todos = [...postales, ...vinos, ...camisetas];
+                const todos = [...vinos, ...camisetas];
                 if (todos.length === 0) {
                     e.preventDefault();
-                    alert("Selecciona al menos un producto para pagar.");
+                    alert("Selecciona al menos un vino o una camiseta para pagar.");
                     return;
                 }
                 document.getElementById("productos_json").value = JSON.stringify(todos);
@@ -750,64 +751,13 @@ def admin_pedidos():
         <title>Panel de Pedidos</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body {
-                font-family: 'Segoe UI', sans-serif;
-                background-color: #111;
-                color: white;
-                padding: 20px;
-            }
-            h2 {
-                text-align: center;
-                color: gold;
-                margin-bottom: 30px;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 14px;
-            }
-            th, td {
-                border: 1px solid #444;
-                padding: 10px;
-                text-align: left;
-            }
-            th {
-                background-color: #222;
-                color: #ffcc00;
-            }
-            tr:nth-child(even) {
-                background-color: #1a1a1a;
-            }
-            .producto {
-                background-color: #2c2c2c;
-                margin: 3px 0;
-                padding: 4px 8px;
-                border-radius: 4px;
-                display: inline-block;
-                color: #fff;
-            }
-            .estado {
-                background-color: #333;
-                padding: 6px 10px;
-                border-radius: 5px;
-                font-size: 13px;
-                display: inline-block;
-            }
-            select {
-                background-color: #000;
-                color: white;
-                border: 1px solid #666;
-                padding: 5px;
-                border-radius: 4px;
-            }
-            @media (max-width: 768px) {
-                table, th, td {
-                    font-size: 12px;
-                }
-                th, td {
-                    padding: 8px 6px;
-                }
-            }
+            body { font-family: 'Segoe UI', sans-serif; background-color: #111; color: white; padding: 20px; }
+            h2 { text-align: center; color: gold; margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; font-size: 14px; }
+            th, td { border: 1px solid #444; padding: 10px; text-align: left; }
+            th { background-color: #222; color: #ffcc00; }
+            tr:nth-child(even) { background-color: #1a1a1a; }
+            .producto { background-color: #2c2c2c; margin: 3px 0; padding: 4px 8px; border-radius: 4px; display: inline-block; color: #fff; }
         </style>
     </head>
     <body>
@@ -822,8 +772,6 @@ def admin_pedidos():
                 <th>Productos</th>
                 <th>Dirección</th>
                 <th>Teléfono</th>
-                <th>Total (€)</th>
-                <th>Estado</th>
             </tr>
     '''
 
@@ -831,28 +779,16 @@ def admin_pedidos():
         fecha_hora = pedido.get("fecha", "")
         fecha, hora = fecha_hora.split("T")[0], fecha_hora.split("T")[1][:8]
         productos = pedido.get("productos", [])
-        total = 0
         productos_html = ""
         for p in productos:
             if isinstance(p, dict):
-                nombre = p.get("producto", "")
+                nombre = normalizar_nombre(p.get("producto", ""))
                 cantidad = int(p.get("cantidad", 1))
                 talla = p.get("talla")
                 descripcion = f"{nombre} x {cantidad}"
                 if talla:
                     descripcion += f" (Talla {talla})"
                 productos_html += f'<div class="producto">{descripcion}</div>'
-                if "tinto" in nombre:
-                    precio = 1.20
-                elif "rosado" in nombre:
-                    precio = 1.10
-                elif "blanco" in nombre:
-                    precio = 1.00
-                elif "camiseta" in nombre.lower():
-                    precio = 1.50
-                else:
-                    precio = 1.00
-                total += precio * cantidad
 
         html += f'''
         <tr>
@@ -864,18 +800,11 @@ def admin_pedidos():
             <td>{productos_html}</td>
             <td>{pedido.get("direccion", "")}</td>
             <td>{pedido.get("telefono", "")}</td>
-            <td>€ {total:.2f}</td>
-            <td>
-                <select class="estado">
-                    <option>🕓 En proceso</option>
-                    <option>✅ Enviado</option>
-                </select>
-            </td>
         </tr>
         '''
 
     html += "</table></body></html>"
-    return html	
+    return html
 @app.route('/success_vino')
 def success_vino():
     return '''
@@ -1241,6 +1170,62 @@ def formulario_pago():
     </html>
     '''
     return render_template_string(html)
+def normalizar_nombre(nombre):
+    return nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+@app.route('/pagar_postales_directo', methods=['POST'])
+def pagar_postales_directo():
+    codigo = request.form.get("codigo")
+    postales_json = request.form.get("postales_json")
+    email = request.form.get("email", "anonimo@postales.com")
+
+    if not codigo or not postales_json:
+        return "❌ Faltan datos para procesar el pago", 400
+
+    try:
+        postales = json.loads(postales_json)
+    except Exception as e:
+        return f"❌ Error leyendo postales seleccionadas: {e}", 400
+
+    if not postales:
+        return "❌ No se seleccionaron postales", 400
+
+    line_items = []
+    precio_unitario = 300
+    if len(postales) == 5:
+        precio_unitario = 100
+
+    for p in postales:
+        nombre_limpio = normalizar_nombre(p)
+        line_items.append({
+            "price_data": {
+                "currency": "eur",
+                "product_data": {"name": f"Postal {nombre_limpio}"},
+                "unit_amount": precio_unitario
+            },
+            "quantity": 1
+        })
+
+    success_params = f"?codigo={codigo}&postales_json={json.dumps(postales)}"
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            customer_email=email,
+            line_items=line_items,
+            mode="payment",
+            success_url="https://postales-online.onrender.com/success" + success_params,
+            cancel_url="https://postales-online.onrender.com/cancel",
+            metadata={
+                "codigo": codigo,
+                "tipo": "postales",
+                "productos_json": json.dumps([
+                    {"producto": p, "cantidad": 1} for p in postales
+                ])
+            }
+        )
+        return redirect(session.url, code=303)
+    except Exception as e:
+        return f"❌ Error creando sesión de Stripe: {e}", 500
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
