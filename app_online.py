@@ -384,34 +384,39 @@ def webhook_stripe():
         email = session.get('customer_email')
         metadata = session.get('metadata', {})
 
-        if metadata.get("tipo") == "productos":
-            try:
-                productos = json.loads(metadata.get("productos_json", "[]"))
-            except:
-                productos = []
+        tipo = metadata.get("tipo")
+        try:
+            productos = json.loads(metadata.get("productos_json", "[]"))
+        except:
+            productos = []
 
-            pedido = {
-                "fecha": datetime.utcnow().isoformat(),
-                "correo": metadata.get("correo", ""),
-                "tipo": "productos",
-                "productos": productos,
-                "direccion": metadata.get("direccion", ""),
-                "telefono": metadata.get("telefono", ""),
-                "nombre": metadata.get("nombre", "")
-            }
+        pedido_id = str(randint(10000000, 99999999))  # ID de 8 dígitos numérico
 
-            pedidos_path = os.path.join(BASE, "pedidos.json")
-            pedidos_actuales = []
-            if os.path.exists(pedidos_path):
-                with open(pedidos_path) as f:
-                    try:
-                        pedidos_actuales = json.load(f)
-                    except:
-                        pedidos_actuales = []
+        pedido = {
+            "id": pedido_id,
+            "fecha": datetime.utcnow().isoformat(),
+            "correo": metadata.get("correo", email),
+            "tipo": tipo,
+            "productos": productos,
+            "direccion": metadata.get("direccion", ""),
+            "telefono": metadata.get("telefono", ""),
+            "nombre": metadata.get("nombre", ""),
+            "estado": "🕓 En proceso"
+        }
 
-            pedidos_actuales.append(pedido)
-            with open(pedidos_path, "w") as f:
-                json.dump(pedidos_actuales, f, indent=2)
+        pedidos_path = os.path.join(BASE, "pedidos.json")
+        pedidos_actuales = []
+
+        if os.path.exists(pedidos_path):
+            with open(pedidos_path) as f:
+                try:
+                    pedidos_actuales = json.load(f)
+                except:
+                    pedidos_actuales = []
+
+        pedidos_actuales.append(pedido)
+        with open(pedidos_path, "w") as f:
+            json.dump(pedidos_actuales, f, indent=2)
 
     return '', 200
 @app.route('/success')
@@ -419,6 +424,7 @@ def success():
     codigo = request.args.get("codigo", "")
     postal = request.args.get("postal", "")
     postales_json = request.args.get("postales_json", "")
+    pedido_id = request.args.get("pedido_id", "")
 
     descarga_html = ""
     if postales_json:
@@ -453,6 +459,10 @@ def success():
         '''
     else:
         descarga_html = "<p>Pero no se pudo identificar el archivo.</p>"
+
+    seguimiento_html = ""
+    if pedido_id:
+        seguimiento_html = f'''<p><a class="button" href="/ver_pedido/{pedido_id}">🔎 Ver estado de tu pedido</a></p>'''
 
     return f'''
     <html>
@@ -489,6 +499,7 @@ def success():
                 font-weight: bold;
                 border: none;
                 cursor: pointer;
+                display: inline-block;
             }}
             .preview img {{
                 max-width: 280px;
@@ -500,8 +511,9 @@ def success():
     <body>
         <div class="card">
             <h2>✅ ¡Pago exitoso!</h2>
-            <p>Tu postal ha sido procesada correctamente.</p>
+            <p>Tu pedido ha sido procesado correctamente.</p>
             {descarga_html}
+            {seguimiento_html}
             <p><a class="button" href="/">↩️ Volver al inicio</a></p>
         </div>
     </body>
@@ -522,7 +534,7 @@ def index():
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>Buscar postal</title>
+        <title>Buscar postal o pedido</title>
         <style>
             video#bg-video {
                 position: fixed;
@@ -564,6 +576,13 @@ def index():
                 <input type="text" name="codigo" placeholder="Ej: abc123" required />
                 <br>
                 <button type="submit">Ver postal</button>
+            </form>
+            <hr style="margin: 30px 0;">
+            <h2>🔎 Ver estado de tu pedido</h2>
+            <form action="/pedido" method="get">
+                <input type="text" name="id" placeholder="ID de pedido" required />
+                <br>
+                <button type="submit">Ver estado</button>
             </form>
         </div>
     </body>
@@ -758,7 +777,19 @@ def admin_pedidos():
             th { background-color: #222; color: #ffcc00; }
             tr:nth-child(even) { background-color: #1a1a1a; }
             .producto { background-color: #2c2c2c; margin: 3px 0; padding: 4px 8px; border-radius: 4px; display: inline-block; color: #fff; }
+            select.estado { padding: 6px; border-radius: 5px; background: #333; color: white; }
         </style>
+        <script>
+            async function actualizarEstado(id) {
+                const select = document.getElementById('estado_' + id);
+                const estado = select.value;
+                await fetch('/actualizar_estado_pedido', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, estado })
+                });
+            }
+        </script>
     </head>
     <body>
         <h2>📦 Pedidos Recibidos</h2>
@@ -772,6 +803,7 @@ def admin_pedidos():
                 <th>Productos</th>
                 <th>Dirección</th>
                 <th>Teléfono</th>
+                <th>Estado</th>
             </tr>
     '''
 
@@ -790,6 +822,9 @@ def admin_pedidos():
                     descripcion += f" (Talla {talla})"
                 productos_html += f'<div class="producto">{descripcion}</div>'
 
+        id_pedido = pedido.get("id", "")
+        estado_actual = pedido.get("estado", "🕓 En proceso")
+
         html += f'''
         <tr>
             <td>{fecha}</td>
@@ -800,6 +835,13 @@ def admin_pedidos():
             <td>{productos_html}</td>
             <td>{pedido.get("direccion", "")}</td>
             <td>{pedido.get("telefono", "")}</td>
+            <td>
+                <select id="estado_{id_pedido}" class="estado" onchange="actualizarEstado('{id_pedido}')">
+                    <option value="🕓 En proceso" {'selected' if estado_actual == '🕓 En proceso' else ''}>🕓 En proceso</option>
+                    <option value="✅ Enviado" {'selected' if estado_actual == '✅ Enviado' else ''}>✅ Enviado</option>
+                    <option value="📦 Listo para recoger" {'selected' if estado_actual == '📦 Listo para recoger' else ''}>📦 Listo para recoger</option>
+                </select>
+            </td>
         </tr>
         '''
 
@@ -1260,6 +1302,197 @@ def pagar_postales_directo():
         return redirect(session.url, code=303)
     except Exception as e:
         return f"❌ Error creando sesión de Stripe: {e}", 500
+@app.route('/estado_pedido/<pedido_id>')
+def estado_pedido(pedido_id):
+    pedidos_path = os.path.join(BASE, "pedidos.json")
+    if not os.path.exists(pedidos_path):
+        return f"<h2>❌ No se encontró el pedido con ID {pedido_id}</h2>", 404
+
+    try:
+        with open(pedidos_path) as f:
+            pedidos = json.load(f)
+    except:
+        return f"<h2>⚠️ Error leyendo el archivo de pedidos</h2>", 500
+
+    pedido = next((p for p in pedidos if p.get("id") == pedido_id), None)
+    if not pedido:
+        return f"<h2>❌ Pedido con ID {pedido_id} no encontrado</h2>", 404
+
+    productos_html = ""
+    for p in pedido.get("productos", []):
+        nombre = normalizar_nombre(p.get("producto", ""))
+        cantidad = int(p.get("cantidad", 1))
+        talla = p.get("talla")
+        descripcion = f"{nombre} x {cantidad}"
+        if talla:
+            descripcion += f" (Talla {talla})"
+        productos_html += f'<div style="margin-bottom: 8px">{descripcion}</div>'
+
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>📦 Estado del Pedido</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{ background: #111; color: white; font-family: sans-serif; padding: 30px; text-align: center; }}
+            .card {{ background: #222; padding: 25px; border-radius: 12px; max-width: 500px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.5); }}
+            .card h2 {{ color: #2ecc71; }}
+            .card .producto {{ background: #333; padding: 10px; margin: 5px 0; border-radius: 6px; }}
+            .info {{ margin: 10px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>📦 Estado del Pedido</h2>
+            <div class="info">ID del pedido: <code>{pedido_id}</code></div>
+            <div class="info">Nombre: {pedido.get("nombre", "")}</div>
+            <div class="info">Correo: {pedido.get("correo", "")}</div>
+            <div class="info">Dirección: {pedido.get("direccion", "")}</div>
+            <div class="info">Teléfono: {pedido.get("telefono", "")}</div>
+            <h3>🛍 Productos</h3>
+            {productos_html}
+            <div class="info">Estado: <b>🕓 En proceso</b></div>
+            <div style="margin-top: 20px;"><a href="/" style="color:#2ecc71">↩️ Volver al inicio</a></div>
+        </div>
+    </body>
+    </html>
+    '''
+
+@app.route('/pedido')
+def ver_pedido():
+    pedido_id = request.args.get("id", "").strip()
+    pedidos_path = os.path.join(BASE, "pedidos.json")
+
+    if not os.path.exists(pedidos_path):
+        return "<h2>No hay pedidos registrados</h2>"
+
+    try:
+        with open(pedidos_path) as f:
+            pedidos = json.load(f)
+    except Exception as e:
+        return f"<h2>Error leyendo pedidos:</h2><pre>{str(e)}</pre>"
+
+    pedido = next((p for p in pedidos if p.get("id") == pedido_id), None)
+    if not pedido:
+        return f"<h2>❌ Pedido con ID <code>{pedido_id}</code> no encontrado</h2>"
+
+    productos_html = ""
+    for p in pedido.get("productos", []):
+        nombre = p.get("producto", "")
+        cantidad = p.get("cantidad", 1)
+        talla = p.get("talla", None)
+        desc = f"{nombre} x{cantidad}"
+        if talla:
+            desc += f" (Talla {talla})"
+        productos_html += f"<li>{desc}</li>"
+
+    return f'''
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Pedido {pedido_id}</title>
+        <style>
+            body {{ background: #111; color: white; font-family: sans-serif; text-align: center; padding: 20px; }}
+            .card {{ background: #222; border-radius: 10px; padding: 20px; max-width: 500px; margin: auto; }}
+            ul {{ text-align: left; margin: 20px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>🧾 Pedido #{pedido_id}</h2>
+            <p><b>Estado:</b> {pedido.get("estado")}</p>
+            <p><b>Nombre:</b> {pedido.get("nombre")}</p>
+            <p><b>Dirección:</b> {pedido.get("direccion")}</p>
+            <p><b>Correo:</b> {pedido.get("correo")}</p>
+            <p><b>Teléfono:</b> {pedido.get("telefono")}</p>
+            <p><b>Fecha:</b> {pedido.get("fecha")}</p>
+            <h3>🛍 Productos:</h3>
+            <ul>{productos_html}</ul>
+            <p><a href="/">↩️ Volver al inicio</a></p>
+        </div>
+    </body>
+    </html>
+    '''
+@app.route('/buscar_pedido')
+def buscar_pedido():
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Buscar Pedido</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{
+                background-color: #111;
+                color: white;
+                font-family: sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+            }}
+            .card {{
+                background-color: #222;
+                padding: 30px;
+                border-radius: 12px;
+                text-align: center;
+                box-shadow: 0 0 10px rgba(255,255,255,0.05);
+            }}
+            input, button {{
+                padding: 12px;
+                margin: 10px;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+            }}
+            input {{ background: #333; color: white; }}
+            button {{ background: #2ecc71; color: white; cursor: pointer; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>🔎 Busca tu Pedido</h2>
+            <form method="GET" action="/ver_pedido_redirect">
+                <input name="id" placeholder="Ingresa tu número de pedido" required />
+                <br>
+                <button type="submit">📦 Ver Estado</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    '''
+
+@app.route('/ver_pedido_redirect')
+def ver_pedido_redirect():
+    pedido_id = request.args.get("id", "").strip()
+    return redirect(f"/ver_pedido/{pedido_id}")
+@app.route('/actualizar_estado_pedido', methods=['POST'])
+def actualizar_estado_pedido():
+    data = request.get_json()
+    pedido_id = data.get("id")
+    nuevo_estado = data.get("estado")
+
+    pedidos_path = os.path.join(BASE, "pedidos.json")
+    if not os.path.exists(pedidos_path):
+        return jsonify({"error": "Archivo no encontrado"}), 404
+
+    try:
+        with open(pedidos_path) as f:
+            pedidos = json.load(f)
+    except:
+        return jsonify({"error": "Error leyendo pedidos"}), 500
+
+    for p in pedidos:
+        if p.get("id") == pedido_id:
+            p["estado"] = nuevo_estado
+
+    with open(pedidos_path, "w") as f:
+        json.dump(pedidos, f, indent=2)
+
+    return jsonify({"status": "ok"})
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
