@@ -1041,12 +1041,30 @@ def pagar_productos_seleccionados():
         return "❌ No se seleccionó ningún producto", 400
 
     try:
-        productos = json.loads(productos_json)
+        productos_dict = json.loads(productos_json)
     except Exception as e:
         return f"❌ Formato de productos inválido: {e}", 400
 
+    productos = []
+
+    # 🔸 Vinos
+    for vino, cantidad in productos_dict.get("vinos", {}).items():
+        productos.append({"producto": vino, "cantidad": cantidad})
+
+    # 🔸 Camisetas
+    for c in productos_dict.get("camisetas", []):
+        productos.append({
+            "producto": c["nombre"],
+            "cantidad": c["cantidad"],
+            "talla": c["talla"]
+        })
+
+    # 🔸 Postales
+    for p in productos_dict.get("postales", []):
+        productos.append({"producto": p, "cantidad": 1})
+
     if not productos:
-        return "❌ No se seleccionó ningún producto", 400
+        return "❌ No se seleccionó ningún producto válido", 400
 
     precios_vino = {
         "vino_tinto.jpg": 120,
@@ -1060,12 +1078,12 @@ def pagar_productos_seleccionados():
         cantidad = int(p.get("cantidad", 0))
         talla = p.get("talla", None)
 
-        if not nombre or cantidad <= 0:
+        if cantidad <= 0 or not nombre:
             continue
 
         if nombre.startswith("vino_") or "vino" in nombre.lower():
             precio = precios_vino.get(nombre, 100)
-            nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+            nombre_limpio = nombre.replace(".jpg", "").replace("_", " ").title()
             line_items.append({
                 "price_data": {
                     "currency": "eur",
@@ -1075,7 +1093,6 @@ def pagar_productos_seleccionados():
                 "quantity": cantidad
             })
         elif talla:
-            # Camiseta
             nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
             line_items.append({
                 "price_data": {
@@ -1085,11 +1102,10 @@ def pagar_productos_seleccionados():
                 },
                 "quantity": cantidad
             })
-        elif nombre.lower().endswith(".jpg") or nombre.lower().endswith(".png"):
-            # Postal
+        else:
             nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
             precio_unitario = 300
-            if len(productos) == 5:
+            if len(productos_dict.get("postales", [])) == 5:
                 precio_unitario = 100
             line_items.append({
                 "price_data": {
@@ -1099,8 +1115,6 @@ def pagar_productos_seleccionados():
                 },
                 "quantity": 1
             })
-        else:
-            print(f"❗ Producto no reconocido: {nombre}")
 
     if not line_items:
         return "❌ No hay productos válidos para pagar", 400
