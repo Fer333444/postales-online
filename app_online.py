@@ -11,6 +11,7 @@ import cloudinary.uploader
 import stripe
 import sendgrid
 from sendgrid.helpers.mail import Mail
+from random import randint
 
 # Configuración
 cloudinary.config(
@@ -386,16 +387,13 @@ def webhook_stripe():
         email = session.get('customer_email')
         metadata = session.get('metadata', {})
 
-        tipo = metadata.get("tipo", "desconocido")
-        pedido_id = str(randint(10000000, 99999999))  # ID numérico de 8 dígitos
+        tipo = metadata.get("tipo")
+        try:
+            productos = json.loads(metadata.get("productos_json", "[]"))
+        except:
+            productos = []
 
-        # Procesar productos si existen
-        productos = []
-        if "productos_json" in metadata:
-            try:
-                productos = json.loads(metadata["productos_json"])
-            except:
-                productos = []
+        pedido_id = str(randint(10000000, 99999999))
 
         pedido = {
             "id": pedido_id,
@@ -421,6 +419,9 @@ def webhook_stripe():
         pedidos_actuales.append(pedido)
         with open(pedidos_path, "w") as f:
             json.dump(pedidos_actuales, f, indent=2)
+
+        # ✅ Enviar email con link de seguimiento
+        enviar_email_pedido(email, pedido_id)
 
     return '', 200
 @app.route('/success')
@@ -1534,6 +1535,25 @@ def actualizar_estado_pedido():
         json.dump(pedidos, f, indent=2)
 
     return jsonify({"status": "ok"})
+def enviar_email_pedido(email, pedido_id):
+    try:
+        sg = sendgrid.SendGridAPIClient(api_key=os.getenv("SENDGRID_API_KEY"))
+        link = f"https://postales-online.onrender.com/ver_pedido?id={pedido_id}"
+        mensaje = Mail(
+            from_email=os.getenv("EMAIL_FROM"),
+            to_emails=email,
+            subject="🧾 Tu pedido ha sido recibido - Postales Online",
+            html_content=f'''
+            <p>Hola,</p>
+            <p>Gracias por tu compra. Puedes hacer seguimiento de tu pedido usando el siguiente enlace:</p>
+            <p><a href="{link}" target="_blank">📦 Ver estado del pedido #{pedido_id}</a></p>
+            <p>Saludos,<br>Equipo Postales Online</p>
+            '''
+        )
+        sg.send(mensaje)
+        print(f"✅ Email de seguimiento enviado a {email} para pedido {pedido_id}")
+    except Exception as e:
+        print(f"❌ Error enviando email de seguimiento: {e}")
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
