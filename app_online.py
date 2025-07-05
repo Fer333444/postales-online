@@ -1060,12 +1060,12 @@ def pagar_productos_seleccionados():
         cantidad = int(p.get("cantidad", 0))
         talla = p.get("talla", None)
 
-        if cantidad <= 0 or not nombre:
+        if not nombre or cantidad <= 0:
             continue
 
         if nombre.startswith("vino_") or "vino" in nombre.lower():
             precio = precios_vino.get(nombre, 100)
-            nombre_limpio = nombre.replace(".jpg", "").replace("_", " ").title()
+            nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
             line_items.append({
                 "price_data": {
                     "currency": "eur",
@@ -1075,6 +1075,7 @@ def pagar_productos_seleccionados():
                 "quantity": cantidad
             })
         elif talla:
+            # Camiseta
             nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
             line_items.append({
                 "price_data": {
@@ -1084,7 +1085,7 @@ def pagar_productos_seleccionados():
                 },
                 "quantity": cantidad
             })
-        else:
+        elif nombre.lower().endswith(".jpg") or nombre.lower().endswith(".png"):
             # Postal
             nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
             precio_unitario = 300
@@ -1098,6 +1099,8 @@ def pagar_productos_seleccionados():
                 },
                 "quantity": 1
             })
+        else:
+            print(f"❗ Producto no reconocido: {nombre}")
 
     if not line_items:
         return "❌ No hay productos válidos para pagar", 400
