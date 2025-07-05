@@ -1042,8 +1042,8 @@ def pagar_productos_seleccionados():
 
     try:
         productos = json.loads(productos_json)
-    except:
-        return "❌ Formato de productos inválido", 400
+    except Exception as e:
+        return f"❌ Formato de productos inválido: {e}", 400
 
     if not productos:
         return "❌ No se seleccionó ningún producto", 400
@@ -1059,10 +1059,11 @@ def pagar_productos_seleccionados():
         nombre = p.get("producto", "")
         cantidad = int(p.get("cantidad", 0))
         talla = p.get("talla", None)
-        if cantidad <= 0:
+
+        if cantidad <= 0 or not nombre:
             continue
 
-        if nombre.startswith("vino_"):
+        if nombre.startswith("vino_") or "vino" in nombre.lower():
             precio = precios_vino.get(nombre, 100)
             nombre_limpio = nombre.replace(".jpg", "").replace("_", " ").title()
             line_items.append({
@@ -1073,17 +1074,33 @@ def pagar_productos_seleccionados():
                 },
                 "quantity": cantidad
             })
-        elif nombre.lower().endswith(".jpg") or nombre.lower().endswith(".png"):
-            if talla:
-                nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
-                line_items.append({
-                    "price_data": {
-                        "currency": "eur",
-                        "product_data": {"name": f"Camiseta {nombre_limpio} (Talla {talla})"},
-                        "unit_amount": 1500
-                    },
-                    "quantity": cantidad
-                })
+        elif talla:
+            nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+            line_items.append({
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": f"Camiseta {nombre_limpio} (Talla {talla})"},
+                    "unit_amount": 1500
+                },
+                "quantity": cantidad
+            })
+        else:
+            # Postal
+            nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+            precio_unitario = 300
+            if len(productos) == 5:
+                precio_unitario = 100
+            line_items.append({
+                "price_data": {
+                    "currency": "eur",
+                    "product_data": {"name": f"Postal {nombre_limpio}"},
+                    "unit_amount": precio_unitario
+                },
+                "quantity": 1
+            })
+
+    if not line_items:
+        return "❌ No hay productos válidos para pagar", 400
 
     try:
         session = stripe.checkout.Session.create(
