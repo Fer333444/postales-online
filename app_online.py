@@ -368,6 +368,8 @@ def checkout_multiple_postales():
         return redirect(session.url, code=303)
     except Exception as e:
         return f"❌ Error creando sesión de pago: {e}", 500
+from random import randint  # Asegúrate de tenerlo arriba
+
 @app.route('/webhook_stripe', methods=['POST'])
 def webhook_stripe():
     payload = request.data
@@ -384,13 +386,16 @@ def webhook_stripe():
         email = session.get('customer_email')
         metadata = session.get('metadata', {})
 
-        tipo = metadata.get("tipo")
-        try:
-            productos = json.loads(metadata.get("productos_json", "[]"))
-        except:
-            productos = []
+        tipo = metadata.get("tipo", "desconocido")
+        pedido_id = str(randint(10000000, 99999999))  # ID numérico de 8 dígitos
 
-        pedido_id = str(randint(10000000, 99999999))  # ID de 8 dígitos numérico
+        # Procesar productos si existen
+        productos = []
+        if "productos_json" in metadata:
+            try:
+                productos = json.loads(metadata["productos_json"])
+            except:
+                productos = []
 
         pedido = {
             "id": pedido_id,
@@ -406,7 +411,6 @@ def webhook_stripe():
 
         pedidos_path = os.path.join(BASE, "pedidos.json")
         pedidos_actuales = []
-
         if os.path.exists(pedidos_path):
             with open(pedidos_path) as f:
                 try:
@@ -424,8 +428,33 @@ def success():
     codigo = request.args.get("codigo", "")
     postal = request.args.get("postal", "")
     postales_json = request.args.get("postales_json", "")
-    pedido_id = request.args.get("pedido_id", "")
 
+    # Cargar último pedido para rastreo
+    pedidos_path = os.path.join(BASE, "pedidos.json")
+    pedido_id = ""
+    tipo_pedido = ""
+
+    if os.path.exists(pedidos_path):
+        try:
+            with open(pedidos_path) as f:
+                pedidos = json.load(f)
+                if pedidos:
+                    ultimo = pedidos[-1]
+                    tipo_pedido = ultimo.get("tipo", "")
+                    if tipo_pedido != "postales":
+                        pedido_id = ultimo.get("id", "")
+        except:
+            pedido_id = ""
+
+    # Preparar link de rastreo solo si es camiseta o productos mixtos
+    rastreo_html = ""
+    if pedido_id:
+        rastreo_html = f'''
+            <p>Número de pedido: <strong>{pedido_id}</strong></p>
+            <p><a class="button" href="/ver_pedido?id={pedido_id}">📦 Ver estado del pedido</a></p>
+        '''
+
+    # Manejo de descarga de postales
     descarga_html = ""
     if postales_json:
         try:
@@ -459,10 +488,6 @@ def success():
         '''
     else:
         descarga_html = "<p>Pero no se pudo identificar el archivo.</p>"
-
-    seguimiento_html = ""
-    if pedido_id:
-        seguimiento_html = f'''<p><a class="button" href="/ver_pedido/{pedido_id}">🔎 Ver estado de tu pedido</a></p>'''
 
     return f'''
     <html>
@@ -499,7 +524,6 @@ def success():
                 font-weight: bold;
                 border: none;
                 cursor: pointer;
-                display: inline-block;
             }}
             .preview img {{
                 max-width: 280px;
@@ -513,7 +537,7 @@ def success():
             <h2>✅ ¡Pago exitoso!</h2>
             <p>Tu pedido ha sido procesado correctamente.</p>
             {descarga_html}
-            {seguimiento_html}
+            {rastreo_html}
             <p><a class="button" href="/">↩️ Volver al inicio</a></p>
         </div>
     </body>
@@ -849,7 +873,23 @@ def admin_pedidos():
     return html
 @app.route('/success_vino')
 def success_vino():
-    return '''
+    # Cargar el último ID desde pedidos.json
+    pedidos_path = os.path.join(BASE, "pedidos.json")
+    pedido_id = ""
+    if os.path.exists(pedidos_path):
+        try:
+            with open(pedidos_path) as f:
+                pedidos = json.load(f)
+                if pedidos:
+                    ultimo = pedidos[-1]
+                    if ultimo.get("tipo") == "vino":
+                        pedido_id = ultimo.get("id", "")
+        except:
+            pedido_id = ""
+
+    link_rastreo = f"/ver_pedido?id={pedido_id}" if pedido_id else "#"
+
+    return f'''
     <!DOCTYPE html>
     <html>
     <head>
@@ -857,7 +897,7 @@ def success_vino():
         <title>✅ Pedido confirmado</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body {
+            body {{
                 background-color: #111;
                 color: white;
                 font-family: 'Segoe UI', sans-serif;
@@ -866,24 +906,24 @@ def success_vino():
                 align-items: center;
                 height: 100vh;
                 margin: 0;
-            }
-            .card {
+            }}
+            .card {{
                 background-color: #1e1e1e;
                 padding: 40px;
                 border-radius: 12px;
                 text-align: center;
                 box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
                 border: 2px solid #2ecc71;
-            }
-            h2 {
+            }}
+            h2 {{
                 color: #2ecc71;
                 font-size: 24px;
                 margin-bottom: 10px;
-            }
-            p {
+            }}
+            p {{
                 margin: 10px 0;
-            }
-            a.button {
+            }}
+            a.button {{
                 display: inline-block;
                 margin-top: 20px;
                 background: #2ecc71;
@@ -892,14 +932,15 @@ def success_vino():
                 text-decoration: none;
                 border-radius: 8px;
                 font-weight: bold;
-            }
+            }}
         </style>
     </head>
     <body>
         <div class="card">
             <h2>✅ ¡Pago exitoso!</h2>
             <p>Tu pedido de vinos ha sido recibido correctamente.</p>
-            <p>Te contactaremos pronto para confirmar el envío.</p>
+            <p>Número de pedido: <strong>{pedido_id}</strong></p>
+            <p><a class="button" href="{link_rastreo}">📦 Ver estado del pedido</a></p>
             <a class="button" href="/">↩️ Volver al inicio</a>
         </div>
     </body>
