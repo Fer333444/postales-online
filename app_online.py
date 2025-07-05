@@ -938,7 +938,7 @@ def success_vino():
 def pagar_postales_seleccionadas():
     codigo = request.form.get("codigo")
     postales_json = request.form.get("postales_json")
-    email = request.form.get("email", "anonimo@postales.com")  # opcional
+    email = request.form.get("email", "anonimo@postales.com")
 
     if not codigo or not postales_json:
         return "❌ Faltan datos para procesar el pago", 400
@@ -952,11 +952,10 @@ def pagar_postales_seleccionadas():
         return "❌ No se seleccionaron postales", 400
 
     line_items = []
-    precio_unitario = 300  # 3 € por defecto
+    precio_unitario = 300  # 3€ por defecto
 
     if len(postales) == 5:
-        # Si seleccionaron 5, se cobra 5 € total (1 €/unidad)
-        precio_unitario = 100
+        precio_unitario = 100  # aplica descuento a 1€/unidad
 
     for p in postales:
         nombre_limpio = p.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
@@ -974,6 +973,7 @@ def pagar_postales_seleccionadas():
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
+            customer_email=email,
             line_items=line_items,
             mode="payment",
             success_url="https://postales-online.onrender.com/success" + success_params,
@@ -1107,37 +1107,18 @@ def pagar_productos_seleccionados():
     telefono = request.form.get("telefono", "")
     codigo = request.form.get("codigo", "")
 
-    productos = []
+    productos_json = request.form.get("productos_json")
+    if not productos_json:
+        return "❌ No se seleccionó ningún producto", 400
 
-    # Vinos
-    for key in request.form:
-        if key.startswith("cantidad_vino_"):
-            vino = key.replace("cantidad_vino_", "")
-            cantidad = int(request.form.get(key, 0))
-            if cantidad > 0:
-                productos.append({
-                    "producto": vino,
-                    "cantidad": cantidad,
-                    "tipo": "vino"
-                })
-
-    # Camisetas
-    camisetas = request.form.getlist("camiseta")
-    for c in camisetas:
-        cantidad = int(request.form.get(f"cantidad_{c}", 0))
-        talla = request.form.get(f"talla_{c}", "M")
-        if cantidad > 0:
-            productos.append({
-                "producto": c,
-                "cantidad": cantidad,
-                "talla": talla,
-                "tipo": "camiseta"
-            })
+    try:
+        productos = json.loads(productos_json)
+    except:
+        return "❌ Formato de productos inválido", 400
 
     if not productos:
         return "❌ No se seleccionó ningún producto", 400
 
-    # Construcción de Stripe line_items
     precios_vino = {
         "vino_tinto.jpg": 120,
         "vino_rosado.jpg": 110,
@@ -1146,8 +1127,13 @@ def pagar_productos_seleccionados():
 
     line_items = []
     for p in productos:
-        if p.get("tipo") == "vino":
-            nombre = p["producto"]
+        nombre = p.get("producto", "")
+        cantidad = int(p.get("cantidad", 0))
+        talla = p.get("talla", None)
+        if cantidad <= 0:
+            continue
+
+        if nombre.startswith("vino_"):
             precio = precios_vino.get(nombre, 100)
             nombre_limpio = nombre.replace(".jpg", "").replace("_", " ").title()
             line_items.append({
@@ -1156,21 +1142,20 @@ def pagar_productos_seleccionados():
                     "product_data": {"name": f"Vino {nombre_limpio}"},
                     "unit_amount": precio
                 },
-                "quantity": p["cantidad"]
+                "quantity": cantidad
             })
-        elif p.get("tipo") == "camiseta":
-            nombre = p["producto"].replace(".jpg", "").replace("_", " ").title()
-            talla = p.get("talla", "M")
-            line_items.append({
-                "price_data": {
-                    "currency": "eur",
-                    "product_data": {"name": f"Camiseta {nombre} - Talla {talla}"},
-                    "unit_amount": 1500
-                },
-                "quantity": p["cantidad"]
-            })
+        elif nombre.lower().endswith(".jpg") or nombre.lower().endswith(".png"):
+            if talla:
+                nombre_limpio = nombre.replace(".jpg", "").replace(".png", "").replace("_", " ").title()
+                line_items.append({
+                    "price_data": {
+                        "currency": "eur",
+                        "product_data": {"name": f"Camiseta {nombre_limpio} (Talla {talla})"},
+                        "unit_amount": 1500
+                    },
+                    "quantity": cantidad
+                })
 
-    # Crear sesión de pago
     try:
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
@@ -1191,19 +1176,6 @@ def pagar_productos_seleccionados():
         return redirect(session.url, code=303)
     except Exception as e:
         return f"❌ Error creando sesión de Stripe: {e}", 500
-def guardar_pedido(pedido):
-    pedidos_path = os.path.join(BASE, "pedidos.json")
-    pedidos_actuales = []
-    if os.path.exists(pedidos_path):
-        with open(pedidos_path) as f:
-            try:
-                pedidos_actuales = json.load(f)
-            except:
-                pedidos_actuales = []
-
-    pedidos_actuales.append(pedido)
-    with open(pedidos_path, "w") as f:
-        json.dump(pedidos_actuales, f, indent=2)
 @app.route('/formulario_pago', methods=['POST'])
 def formulario_pago():
     codigo = request.form.get("codigo")
