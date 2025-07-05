@@ -1140,7 +1140,7 @@ def pagar_productos_seleccionados():
                 "price_data": {
                     "currency": "eur",
                     "product_data": {"name": f"Camiseta {nombre_limpio} (Talla {talla})"},
-                    "unit_amount": 1500
+                    "unit_amount": 150
                 },
                 "quantity": cantidad
             })
